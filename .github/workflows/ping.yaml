@@ -2,7 +2,7 @@ name: Ping Domain Cron
 on:
   workflow_dispatch:
   schedule:
-    - cron: '5,17,29,41,53 * * * *' # Runs every 12 minutes, away from the top of the hour
+    - cron: '*/14 * * * *' # Runs every 14 minutes
 jobs:
   ping:
     runs-on: ubuntu-latest
