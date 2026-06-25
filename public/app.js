@@ -1,4 +1,6 @@
-const loginButton = document.querySelector("#googleLoginButton");
+const loginForm = document.querySelector("#loginForm");
+const usernameInput = document.querySelector("#usernameInput");
+const passwordInput = document.querySelector("#passwordInput");
 const chatForm = document.querySelector("#chatForm");
 const chatInput = document.querySelector("#chatInput");
 const chatMessages = document.querySelector("#chatMessages");
@@ -7,42 +9,10 @@ const newRequestButton = document.querySelector("#newRequestButton");
 
 let conversation = [];
 let activeIntent = "";
-let googleToken = "";
-let googleClientId = "";
+let sessionToken = "";
+let currentUser = "";
 
-window.addEventListener("load", renderGoogleButton);
-
-function renderGoogleButton() {
-  if (!window.google) {
-    setTimeout(renderGoogleButton, 300);
-    return;
-  }
-
-  loadGoogleClientId();
-}
-
-async function loadGoogleClientId() {
-  const response = await fetch("/api/config");
-  const config = await response.json();
-  googleClientId = config.googleClientId;
-
-  if (!googleClientId) {
-    loginButton.textContent = "Missing Google Client ID";
-    loginStatus.textContent = "Add GOOGLE_CLIENT_ID to your .env file, then restart the server.";
-    return;
-  }
-
-  google.accounts.id.initialize({
-    client_id: googleClientId,
-    callback: handleGoogleLogin
-  });
-
-  google.accounts.id.renderButton(loginButton, {
-    theme: "outline",
-    size: "large",
-    text: "signin_with"
-  });
-}
+loginForm.addEventListener("submit", handleLogin);
 
 chatForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -68,7 +38,7 @@ chatForm.addEventListener("submit", async (event) => {
       body: JSON.stringify({
         messages: conversation,
         activeIntent: activeIntent,
-        googleToken: googleToken
+        sessionToken: sessionToken
       })
     });
 
@@ -147,10 +117,31 @@ newRequestButton.addEventListener("click", () => {
   chatInput.focus();
 });
 
-function handleGoogleLogin(response) {
-  googleToken = response.credential;
-  loginButton.textContent = "Logged in with Google";
-  loginStatus.textContent = "You are logged in. Secure support requests are unlocked.";
+async function handleLogin(event) {
+  event.preventDefault();
+
+  const response = await fetch("/api/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      username: usernameInput.value.trim(),
+      password: passwordInput.value
+    })
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    loginStatus.textContent = data.error || "Login failed.";
+    return;
+  }
+
+  sessionToken = data.sessionToken;
+  currentUser = data.username;
+  loginStatus.textContent = `You are logged in as ${currentUser}. Secure support requests are unlocked.`;
+  passwordInput.value = "";
 }
 
 function statusMessageFor(text) {

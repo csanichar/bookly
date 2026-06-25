@@ -5,7 +5,7 @@ import re
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib import error, parse, request
+from urllib import error, request
 
 
 BASE_DIR = Path(__file__).parent
@@ -15,6 +15,10 @@ ORDERS_FILE = BASE_DIR / "orders.json"
 
 DEFAULT_ROUTER_MODEL = "claude-haiku-4-5-20251001"
 SUPPORT_EMAIL = "support@bookly.com"
+DEMO_USERS = {
+    "user1": "password123",
+    "user2": "password456",
+}
 
 
 def load_env_file():
@@ -101,29 +105,24 @@ def find_order_number(text):
     return None
 
 
-def verify_google_token(google_token):
-    """Ask Google if the login token is real and belongs to this app."""
-    if not google_token:
+def make_session_token(username):
+    """Create a simple demo token from a username."""
+    return f"demo-token-{username}"
+
+
+def user_from_session_token(session_token):
+    """Turn a demo session token back into a user."""
+    prefix = "demo-token-"
+
+    if not session_token.startswith(prefix):
         return None
 
-    query = parse.urlencode({"id_token": google_token})
-    token_url = f"https://oauth2.googleapis.com/tokeninfo?{query}"
+    username = session_token[len(prefix):]
 
-    try:
-        with request.urlopen(token_url, timeout=10) as response:
-            token_info = json.loads(response.read().decode("utf-8"))
-    except Exception:
+    if username not in DEMO_USERS:
         return None
 
-    google_client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
-
-    if token_info.get("aud") != google_client_id:
-        return None
-
-    return {
-        "email": str(token_info.get("email", "")).lower(),
-        "google_sub": token_info.get("sub", ""),
-    }
+    return {"username": username}
 
 
 def log(message):
@@ -313,7 +312,7 @@ def orders_for_user(user):
         return {}
 
     all_orders = read_json_file(ORDERS_FILE, {})
-    return all_orders.get(user["email"], {})
+    return all_orders.get(user["username"], {})
 
 
 def escalation_message(order_number, reason):
@@ -509,14 +508,6 @@ def answer_by_intent(route, messages, user):
 class BooklyServer(BaseHTTPRequestHandler):
     def do_GET(self):
         """Serve the HTML, CSS, and browser JavaScript files."""
-        if self.path == "/api/config":
-            send_json(
-                self,
-                200,
-                {"googleClientId": os.environ.get("GOOGLE_CLIENT_ID", "")},
-            )
-            return
-
         if self.path == "/":
             requested_path = PUBLIC_DIR / "index.html"
         else:
@@ -545,6 +536,10 @@ class BooklyServer(BaseHTTPRequestHandler):
 
     def do_POST(self):
         """Handle the chatbot API route."""
+        if self.path == "/api/login":
+            self.handle_login()
+            return
+
         if self.path not in ["/api/chat", "/api/chat-stream"]:
             send_json(self, 404, {"error": "Route not found."})
             return
@@ -593,12 +588,38 @@ class BooklyServer(BaseHTTPRequestHandler):
         )
         stream_words(self, result["data"]["reply"])
 
+    def handle_login(self):
+        """Handle demo username/password login."""
+        content_length = int(self.headers.get("Content-Length", 0))
+        body_text = self.rfile.read(content_length).decode("utf-8")
+
+        try:
+            body = json.loads(body_text or "{}")
+        except json.JSONDecodeError:
+            body = {}
+
+        username = str(body.get("username", ""))
+        password = str(body.get("password", ""))
+
+        if DEMO_USERS.get(username) != password:
+            send_json(self, 401, {"error": "Invalid username or password."})
+            return
+
+        send_json(
+            self,
+            200,
+            {
+                "username": username,
+                "sessionToken": make_session_token(username),
+            },
+        )
+
 
 def handle_chat(body):
     """Run the support orchestrator and return a response dictionary."""
     messages = body.get("messages", [])
     active_intent = body.get("activeIntent", "")
-    google_token = body.get("googleToken", "")
+    session_token = body.get("sessionToken", "")
 
     if not isinstance(messages, list):
         messages = []
@@ -610,14 +631,14 @@ def handle_chat(body):
     if route["is_new_topic"]:
         messages = [{"role": "user", "content": latest_text}]
 
-    user = verify_google_token(google_token)
+    user = user_from_session_token(session_token)
 
     if route["private_request"] and not user:
         return {
             "status_code": 401,
             "data": {
                 "error": (
-                    "Please log in with Google before asking about refunds, order status, "
+                    "Please log in before asking about refunds, order status, "
                     "delivery details, or account information."
                 ),
                 "intent": route["intent"],

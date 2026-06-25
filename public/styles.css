@@ -53,12 +53,25 @@ a {
   text-decoration: none;
 }
 
-.google-login-box,
 .hero-link,
 .chat-form button {
   min-height: 42px;
 }
 
+.login-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.login-form input {
+  width: 120px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.login-form button,
 .hero-link,
 .chat-form button {
   border: 0;
@@ -72,6 +85,7 @@ a {
 }
 
 .hero-link:hover,
+.login-form button:hover,
 .chat-form button:hover {
   background: #25594b;
 }
@@ -315,9 +329,14 @@ a {
 
 @media (max-width: 800px) {
   .top-bar,
+  .login-form,
   .chat-form {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .login-form input {
+    width: 100%;
   }
 
   .nav-links {

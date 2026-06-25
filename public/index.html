@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bookly Customer Support</title>
     <link rel="stylesheet" href="styles.css" />
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
     <header class="top-bar">
@@ -14,7 +13,11 @@
         <a href="#support">Support</a>
         <a href="#chat">Contact Agent</a>
       </nav>
-      <div id="googleLoginButton" class="google-login-box"></div>
+      <form id="loginForm" class="login-form">
+        <input id="usernameInput" type="text" placeholder="Username" autocomplete="username" />
+        <input id="passwordInput" type="password" placeholder="Password" autocomplete="current-password" />
+        <button type="submit">Log in</button>
+      </form>
     </header>
 
     <main>
@@ -80,7 +83,7 @@
           <h2>Contact the Bookly Agent</h2>
           <p>
             General questions work right away. For refunds, order status, delivery details, or
-            account-specific help, log in with Google first.
+            account-specific help, log in first.
           </p>
           <p id="loginStatus" class="login-status">You are not logged in.</p>
         </div>

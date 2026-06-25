@@ -1,5 +1,5 @@
 {
-  "chris.sanichar@gmail.com": {
+  "user1": {
     "BK-10293": {
       "status": "shipped on the 18th and is out for delivery today",
       "delivered_days_ago": 12,
@@ -9,6 +9,18 @@
       "status": "delivered 45 days ago",
       "delivered_days_ago": 45,
       "refund_amount": "$24.50"
+    }
+  },
+  "user2": {
+    "BK-88421": {
+      "status": "processing and expected to ship tomorrow",
+      "delivered_days_ago": 0,
+      "refund_amount": "$16.75"
+    },
+    "BK-77510": {
+      "status": "delivered 8 days ago",
+      "delivered_days_ago": 8,
+      "refund_amount": "$29.00"
     }
   }
 }

@@ -5,14 +5,14 @@ Bookly is a small customer support website for an online bookstore. It uses plai
 ## What is included
 
 - A customer support homepage
-- A "Log in with Google" button
+- A demo username/password login form
 - A simple chatbot UI
 - Quick buttons for order status, refunds, and return policy questions
 - A Python orchestrator in `server.py`
 - A Claude Haiku router for choosing the right support flow
 - Fake order tools backed by `orders.json`
 - A local policy document in `policies.md`
-- Server-side Google token checking for private support requests
+- Server-side demo session checking for private support requests
 - A "New request" button that clears the current support case
 - Human escalation messaging with `support@bookly.com`
 - Streaming chat responses from `/api/chat-stream`
@@ -21,7 +21,7 @@ Bookly is a small customer support website for an online bookstore. It uses plai
 
 1. Make sure Python is installed.
 2. Copy `.env.example` to `.env`.
-3. Add your Google client ID and Anthropic API key to `.env`.
+3. Add your Anthropic API key to `.env`.
 4. Run:
 
 ```bash
@@ -48,32 +48,26 @@ Start Command: python server.py
 Add these environment variables in Render:
 
 ```text
-GOOGLE_CLIENT_ID=your_google_client_id_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 ROUTER_MODEL=claude-haiku-4-5-20251001
 ```
 
-After Render gives you a URL like `https://your-service.onrender.com`, add that URL to Google Cloud Console under Authorized JavaScript origins.
+After Render gives you a URL like `https://your-service.onrender.com`, you can share that URL with demo users.
 
-## Google login
+## Demo login
 
-The browser gets a Google ID token after login.
+The app uses simple demo users so anyone can try the private support flows.
 
-The Google client ID lives in `.env`:
+Demo accounts:
 
 ```text
-GOOGLE_CLIENT_ID=your_google_client_id_here
+user1 / password123
+user2 / password456
 ```
 
-`server.py` sends that value to the browser through `/api/config`, so it does not need to be hardcoded in `public/app.js`.
+`public/app.js` sends the username and password to `/api/login`.
 
-`public/app.js` sends that token to `server.py` with every chat message:
-
-```js
-googleToken: googleToken
-```
-
-`server.py` asks Google if the token is valid before answering private support questions.
+If the login succeeds, `server.py` returns a simple demo session token. The browser sends that token with each chat message.
 
 Private support questions include refunds, returns, order status, delivery details, payment, account, or address questions.
 
@@ -119,7 +113,9 @@ Flow 1: order status
 
 - If the user asks where an order is but does not give an order number, the agent asks for it.
 - If the user gives an order number like `BK-10293`, the agent looks it up in `orders.json`.
-- Orders are grouped by the logged-in user's email address.
+- Orders are grouped by demo username in `orders.json`.
+- `user1` can access `BK-10293` and `BK-20045`.
+- `user2` can access `BK-88421` and `BK-77510`.
 
 Flow 2: return or refund
 
