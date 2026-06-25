@@ -151,21 +151,26 @@ function statusMessageFor(text) {
   const lowerText = text.toLowerCase();
 
   if (
-    lowerText.includes("order") ||
-    lowerText.includes("refund") ||
-    lowerText.includes("return") ||
-    lowerText.includes("tracking") ||
-    lowerText.includes("delivery")
-  ) {
-    return "Searching order information...";
-  }
-
-  if (
     lowerText.includes("policy") ||
     lowerText.includes("shipping") ||
     lowerText.includes("how long")
   ) {
-    return "Searching policy information...";
+    return "Checking policy document...";
+  }
+
+  if (
+    lowerText.includes("refund") ||
+    lowerText.includes("return")
+  ) {
+    return "Checking return eligibility...";
+  }
+
+  if (
+    lowerText.includes("order") ||
+    lowerText.includes("tracking") ||
+    lowerText.includes("delivery")
+  ) {
+    return "Using order lookup tool...";
   }
 
   return "Reviewing your request...";

@@ -7,7 +7,6 @@ Bookly is a small customer support website for an online bookstore. It uses plai
 - A customer support homepage
 - A demo username/password login form
 - A simple chatbot UI
-- Quick buttons for order status, refunds, and return policy questions
 - A Python orchestrator in `server.py`
 - A Claude Haiku router for choosing the right support flow
 - Fake order tools backed by `orders.json`
@@ -110,7 +109,7 @@ The browser sends chat messages to `/api/chat-stream`.
 The server sends small JSON events back one line at a time:
 
 ```json
-{"type": "status", "text": "Searching order information..."}
+{"type": "status", "text": "Using order lookup tool..."}
 {"type": "chunk", "text": "Thanks. "}
 {"type": "done"}
 ```

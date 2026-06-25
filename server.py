@@ -344,7 +344,7 @@ def answer_order_status(messages, user, route):
     if not order_number:
         return {
             "reply": "Happy to help. What's your order number?",
-            "status_message": "Checking what information is needed...",
+            "status_message": "Checking required details...",
         }
 
     order = orders_for_user(user).get(order_number)
@@ -352,12 +352,12 @@ def answer_order_status(messages, user, route):
     if not order:
         return {
             "reply": f"I could not find order {order_number} on your Bookly account.",
-            "status_message": "Searching order information...",
+            "status_message": "Using order lookup tool...",
         }
 
     return {
         "reply": f"Thanks. Order {order_number} {order['status']}. Anything else?",
-        "status_message": "Searching order information...",
+        "status_message": "Using order lookup tool...",
     }
 
 
@@ -370,13 +370,13 @@ def answer_refund_request(messages, user, route):
     if not order_number:
         return {
             "reply": "I can help with that. What's the order number, and what's the reason for the return?",
-            "status_message": "Checking what information is needed...",
+            "status_message": "Checking required details...",
         }
 
     if not reason:
         return {
             "reply": "Thanks. What's the reason for the return?",
-            "status_message": "Checking what information is needed...",
+            "status_message": "Checking required details...",
         }
 
     order = orders_for_user(user).get(order_number)
@@ -384,7 +384,7 @@ def answer_refund_request(messages, user, route):
     if not order:
         return {
             "reply": f"I could not find order {order_number} on your Bookly account.",
-            "status_message": "Searching order information...",
+            "status_message": "Using order lookup tool...",
         }
 
     if order["delivered_days_ago"] > 30:
@@ -439,7 +439,7 @@ def answer_policy_question(latest_text):
     if routed and routed.get("answer"):
         return {
             "reply": routed["answer"],
-            "status_message": "Searching policy information...",
+            "status_message": "Checking policy document...",
         }
 
     lower_text = latest_text.lower()
@@ -447,19 +447,19 @@ def answer_policy_question(latest_text):
     if "shipping" in lower_text or "ship" in lower_text:
         return {
             "reply": "Standard shipping is 3-5 business days, and express shipping is 1-2 business days.",
-            "status_message": "Searching policy information...",
+            "status_message": "Checking policy document...",
         }
 
     if "return" in lower_text:
         return {
             "reply": "Books can be returned within 30 days of delivery if they are unused or damaged on arrival.",
-            "status_message": "Searching policy information...",
+            "status_message": "Checking policy document...",
         }
 
     if "refund" in lower_text:
         return {
             "reply": "Refunds go back to the original payment method and usually take 3-7 business days after approval.",
-            "status_message": "Searching policy information...",
+            "status_message": "Checking policy document...",
         }
 
     return {
@@ -467,7 +467,7 @@ def answer_policy_question(latest_text):
             "Our policy does not contain the information you're looking for. "
             f"For additional inquiries, please send an email to {SUPPORT_EMAIL}."
         ),
-        "status_message": "Searching policy information...",
+        "status_message": "Checking policy document...",
         "escalated": True,
     }
 
