@@ -643,7 +643,8 @@ if __name__ == "__main__":
     load_env_file()
 
     port = int(os.environ.get("PORT", "3000"))
-    server = ThreadingHTTPServer(("localhost", port), BooklyServer)
+    host = os.environ.get("HOST", "0.0.0.0")
+    server = ThreadingHTTPServer((host, port), BooklyServer)
 
-    print(f"Bookly is running at http://localhost:{port}")
+    print(f"Bookly is running on {host}:{port}")
     server.serve_forever()

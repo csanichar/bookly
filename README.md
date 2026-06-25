@@ -34,6 +34,27 @@ python server.py
 http://localhost:3000
 ```
 
+## Render deploy
+
+Render requires web services to listen on `0.0.0.0` and the `PORT` environment variable. `server.py` already does this.
+
+Use these Render settings:
+
+```text
+Build Command: pip install -r requirements.txt
+Start Command: python server.py
+```
+
+Add these environment variables in Render:
+
+```text
+GOOGLE_CLIENT_ID=your_google_client_id_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+ROUTER_MODEL=claude-haiku-4-5-20251001
+```
+
+After Render gives you a URL like `https://your-service.onrender.com`, add that URL to Google Cloud Console under Authorized JavaScript origins.
+
 ## Google login
 
 The browser gets a Google ID token after login.
