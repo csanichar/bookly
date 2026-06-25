@@ -20,13 +20,15 @@ Bookly is a small customer support website for an online bookstore. It uses plai
 ## How to run it
 
 1. Make sure Python is installed.
-2. Run:
+2. Copy `.env.example` to `.env`.
+3. Add your Google client ID and Anthropic API key to `.env`.
+4. Run:
 
 ```bash
 python server.py
 ```
 
-3. Open:
+5. Open:
 
 ```text
 http://localhost:3000
@@ -35,6 +37,14 @@ http://localhost:3000
 ## Google login
 
 The browser gets a Google ID token after login.
+
+The Google client ID lives in `.env`:
+
+```text
+GOOGLE_CLIENT_ID=your_google_client_id_here
+```
+
+`server.py` sends that value to the browser through `/api/config`, so it does not need to be hardcoded in `public/app.js`.
 
 `public/app.js` sends that token to `server.py` with every chat message:
 

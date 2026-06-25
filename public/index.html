@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bookly Customer Support</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body>
+    <header class="top-bar">
+      <a class="logo" href="#">Bookly</a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="#support">Support</a>
+        <a href="#chat">Contact Agent</a>
+      </nav>
+      <div id="googleLoginButton" class="google-login-box"></div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-text">
+          <p class="eyebrow">Customer support</p>
+          <h1>Bookly</h1>
+          <p>
+            Get help with orders, refunds, account questions, and delivery updates from the Bookly
+            support agent.
+          </p>
+          <a class="hero-link" href="#chat">Start support chat</a>
+        </div>
+        <div class="support-panel" aria-label="Bookly support options">
+          <div class="support-ticket ticket-one">
+            <span>Order status</span>
+            <strong>Login required</strong>
+          </div>
+          <div class="support-ticket ticket-two">
+            <span>Refund request</span>
+            <strong>Login required</strong>
+          </div>
+          <div class="support-ticket ticket-three">
+            <span>General help</span>
+            <strong>Open to all</strong>
+          </div>
+        </div>
+      </section>
+
+      <section id="support" class="featured-section">
+        <div class="section-heading">
+          <p class="eyebrow">Support center</p>
+          <h2>What can Bookly help with?</h2>
+        </div>
+
+        <div class="book-grid">
+          <article class="book-card">
+            <div class="support-icon mini-cover-one">1</div>
+            <h3>Track an order</h3>
+            <p>Ask about shipping, delivery dates, or recent order status.</p>
+            <strong>Requires login</strong>
+          </article>
+
+          <article class="book-card">
+            <div class="support-icon mini-cover-two">2</div>
+            <h3>Request a refund</h3>
+            <p>Start a return or refund conversation for a Bookly purchase.</p>
+            <strong>Requires login</strong>
+          </article>
+
+          <article class="book-card">
+            <div class="support-icon mini-cover-three">3</div>
+            <h3>Ask a general question</h3>
+            <p>Get help with store hours, policies, book availability, or account basics.</p>
+            <strong>No login needed</strong>
+          </article>
+        </div>
+      </section>
+
+      <section id="chat" class="chat-section">
+        <div class="chat-intro">
+          <p class="eyebrow">Secure support chat</p>
+          <h2>Contact the Bookly Agent</h2>
+          <p>
+            General questions work right away. For refunds, order status, delivery details, or
+            account-specific help, log in with Google first.
+          </p>
+          <p id="loginStatus" class="login-status">You are not logged in.</p>
+        </div>
+
+        <div class="chat-box">
+          <div class="chat-tools" aria-label="Chat tools">
+            <button id="newRequestButton" class="chat-tool-button" type="button">
+              New request
+            </button>
+          </div>
+
+          <div id="chatMessages" class="chat-messages" aria-live="polite">
+            <div class="message assistant-message">
+              Hi, I am the Bookly support agent. I can help with general questions now. Please log
+              in before asking about refunds, order status, or account details.
+            </div>
+          </div>
+
+          <form id="chatForm" class="chat-form">
+            <input
+              id="chatInput"
+              type="text"
+              placeholder="Ask about an order, refund, return policy, or account question..."
+              autocomplete="off"
+              required
+            />
+            <button type="submit">Send</button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>Bookly template. Built with plain HTML, CSS, JavaScript, and Python.</p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
