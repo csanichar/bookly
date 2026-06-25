@@ -2,6 +2,7 @@ import json
 import mimetypes
 import os
 import re
+import secrets
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -19,6 +20,7 @@ DEMO_USERS = {
     "user1": "password123",
     "user2": "password456",
 }
+SESSIONS = {}
 
 
 def load_env_file():
@@ -106,20 +108,17 @@ def find_order_number(text):
 
 
 def make_session_token(username):
-    """Create a simple demo token from a username."""
-    return f"demo-token-{username}"
+    """Create a random demo session token and remember who owns it."""
+    session_token = secrets.token_urlsafe(32)
+    SESSIONS[session_token] = username
+    return session_token
 
 
 def user_from_session_token(session_token):
-    """Turn a demo session token back into a user."""
-    prefix = "demo-token-"
+    """Look up the user for a random demo session token."""
+    username = SESSIONS.get(session_token)
 
-    if not session_token.startswith(prefix):
-        return None
-
-    username = session_token[len(prefix):]
-
-    if username not in DEMO_USERS:
+    if not username:
         return None
 
     return {"username": username}
@@ -499,7 +498,8 @@ def answer_by_intent(route, messages, user):
     return {
         "reply": (
             "I can help with order status, returns, refunds, shipping policy, and account questions. "
-            "What would you like help with?"
+            "For example, you can ask where an order is, request a return or refund, ask about shipping times, "
+            "or ask to speak with a teammate. What would you like help with?"
         ),
         "status_message": "Reviewing your request...",
     }

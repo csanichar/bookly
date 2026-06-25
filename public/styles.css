@@ -84,6 +84,12 @@ a {
   text-decoration: none;
 }
 
+.top-login-status {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .hero-link:hover,
 .login-form button:hover,
 .chat-form button:hover {
@@ -319,12 +325,6 @@ a {
   border-radius: 6px;
   padding: 12px;
   font-size: 15px;
-}
-
-.site-footer {
-  padding: 24px 7vw;
-  background: var(--ink);
-  color: white;
 }
 
 @media (max-width: 800px) {

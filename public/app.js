@@ -1,6 +1,7 @@
 const loginForm = document.querySelector("#loginForm");
 const usernameInput = document.querySelector("#usernameInput");
 const passwordInput = document.querySelector("#passwordInput");
+const topLoginStatus = document.querySelector("#topLoginStatus");
 const chatForm = document.querySelector("#chatForm");
 const chatInput = document.querySelector("#chatInput");
 const chatMessages = document.querySelector("#chatMessages");
@@ -135,12 +136,14 @@ async function handleLogin(event) {
 
   if (!response.ok) {
     loginStatus.textContent = data.error || "Login failed.";
+    topLoginStatus.textContent = "Login failed";
     return;
   }
 
   sessionToken = data.sessionToken;
   currentUser = data.username;
   loginStatus.textContent = `You are logged in as ${currentUser}. Secure support requests are unlocked.`;
+  topLoginStatus.textContent = `Logged in as ${currentUser}`;
   passwordInput.value = "";
 }
 

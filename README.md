@@ -36,6 +36,12 @@ http://localhost:3000
 
 ## Render deploy
 
+Live demo URL:
+
+```text
+https://support-bookly.onrender.com/
+```
+
 Render requires web services to listen on `0.0.0.0` and the `PORT` environment variable. `server.py` already does this.
 
 Use these Render settings:
@@ -67,7 +73,9 @@ user2 / password456
 
 `public/app.js` sends the username and password to `/api/login`.
 
-If the login succeeds, `server.py` returns a simple demo session token. The browser sends that token with each chat message.
+If the login succeeds, `server.py` returns a random demo session token. The server keeps a small in-memory map from token to username, and the browser sends that token with each chat message.
+
+This is still demo authentication. It is safer than a predictable token, but production should use real signed sessions, a database-backed session store, or SSO.
 
 Private support questions include refunds, returns, order status, delivery details, payment, account, or address questions.
 
@@ -132,9 +140,11 @@ Flow 3: policy questions
 - If an Anthropic key is available, Claude receives the policy text and writes a short grounded answer.
 - If the policy does not contain the requested information, the agent politely points the customer to `support@bookly.com`.
 
-## Test examples
+## Test cases
 
-Try these after logging in:
+Use the live demo URL or local app, then log in with `user1 / password123`.
+
+Test case 1: order status
 
 ```text
 Hi, can you tell me where my order is?
@@ -146,7 +156,9 @@ Then:
 BK-10293
 ```
 
-Refund approval:
+Expected result: the agent looks up `BK-10293` and says it is out for delivery today.
+
+Test case 2: refund approval
 
 ```text
 I want to return a book.
@@ -158,13 +170,17 @@ Then:
 Order BK-10293, the cover arrived damaged.
 ```
 
-Refund escalation:
+Expected result: the agent approves the return and refund because the order is inside the 30-day window.
+
+Test case 3: refund escalation
 
 ```text
 I want to return order BK-20045 because the cover arrived damaged.
 ```
 
-Policy question, no login needed:
+Expected result: the agent escalates to a teammate and tells the user to email `support@bookly.com`.
+
+Extra policy question, no login needed:
 
 ```text
 How long does shipping usually take?
