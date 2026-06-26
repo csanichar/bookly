@@ -50,7 +50,19 @@ BK-10293
 
 Expected result: the agent uses the mocked order lookup tool and says the order is out for delivery today.
 
-### 2. Refund Approval
+### 2. Policy Question
+
+No login is needed for this one.
+
+Message:
+
+```text
+How long does shipping usually take?
+```
+
+Expected result: the agent answers from the policy document: standard shipping is 3-5 business days, and express shipping is 1-2 business days.
+
+### 3. Refund Approval
 
 Message:
 
@@ -68,7 +80,7 @@ Order BK-10293, the cover arrived damaged.
 
 Expected result: the agent checks return eligibility and approves the mocked refund because the order is inside the 30-day window.
 
-### 3. Refund Escalation
+### 4. Refund Escalation
 
 Message:
 
@@ -78,17 +90,6 @@ I want to return order BK-20045 because the cover arrived damaged.
 
 Expected result: the agent sees that the order is outside the 30-day return window, escalates the case, and tells the customer to email `support@bookly.com`.
 
-### 4. Policy Question
-
-No login is needed for this one.
-
-Message:
-
-```text
-How long does shipping usually take?
-```
-
-Expected result: the agent answers from the policy document: standard shipping is 3-5 business days, and express shipping is 1-2 business days.
 
 ## How It Works
 
