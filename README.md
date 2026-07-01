@@ -45,7 +45,7 @@ For the strongest demo sequence:
 
 1. Open the Operations Console link in a separate tab.
 2. Run the approved refund test with `user2` on the customer support page.
-3. Open **Conversation Trace** to explain the AOP, policy checks, and mocked refund action.
+3. Open **Conversations** to review the transcript, summary, outcome, and workflow decision.
 4. Run the outside-window test with `user1`.
 5. Open **Watchtower** to show why teammate review is required.
 
@@ -59,7 +59,7 @@ Log in with `user2 / password456`, then send:
 I want to return order BK-77510 because the cover arrived damaged.
 ```
 
-Expected: a mocked `$29.00` refund is approved. Conversation Trace shows `@orders.lookup`, `@policy.check_return_window`, and `@refund.create_mock`. Watchtower shows **Not flagged** and **Low** risk.
+Expected: a mocked `$29.00` refund is approved. Conversations shows the customer/agent transcript and resolution, while Watchtower shows **Not flagged** and **Low** risk.
 
 ### 2. Outside-Window Escalation
 

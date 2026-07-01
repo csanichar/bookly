@@ -515,6 +515,17 @@ def build_trace(route, answer, user, messages):
 
     if intent == "refund_return" and reason:
         summaries["refund_return"] = f"Customer requested return help. Reason: {reason}."
+
+    transcript = []
+    for message in messages:
+        role = message.get("role")
+        content = str(message.get("content", "")).strip()
+        if role in ["user", "assistant"] and content:
+            transcript.append({"role": role, "content": content})
+
+    if answer.get("reply"):
+        transcript.append({"role": "assistant", "content": answer["reply"]})
+
     resolutions = {
         "approved_refund": "Mock refund approved.",
         "escalated_outside_return_window": "Escalated to teammate review.",
@@ -544,6 +555,7 @@ def build_trace(route, answer, user, messages):
         "orderNumber": order_number,
         "returnReason": reason,
         "decision": decision,
+        "transcript": transcript,
         "relevantKnowledge": knowledge_for_trace(intent, answer),
         "tools": answer.get("tools", []),
         "auditLog": audit_log,
@@ -976,7 +988,12 @@ def handle_chat(body):
     user = user_from_session_token(session_token)
 
     if route["private_request"] and not user:
+        blocked_reply = (
+            "Please log in before asking about refunds, order status, "
+            "delivery details, or account information."
+        )
         blocked_answer = {
+            "reply": blocked_reply,
             "decision": "blocked_private_tool_access",
             "order_number": route.get("order_number", ""),
             "reason": route.get("reason", ""),
@@ -990,10 +1007,7 @@ def handle_chat(body):
         return {
             "status_code": 401,
             "data": {
-                "error": (
-                    "Please log in before asking about refunds, order status, "
-                    "delivery details, or account information."
-                ),
+                "error": blocked_reply,
                 "intent": route["intent"],
                 "isNewTopic": route["is_new_topic"],
                 "trace": trace,

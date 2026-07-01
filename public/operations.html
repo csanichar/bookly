@@ -31,9 +31,10 @@
           <button class="console-tab active" type="button" role="tab" aria-selected="true" data-panel="homePanel">Home</button>
           <button class="console-tab" type="button" role="tab" aria-selected="false" data-panel="insightsPanel">Insights</button>
           <button class="console-tab" type="button" role="tab" aria-selected="false" data-panel="buildPanel">Build / AOP</button>
-          <button class="console-tab" type="button" role="tab" aria-selected="false" data-panel="tracePanel">Conversation Trace</button>
+          <button class="console-tab" type="button" role="tab" aria-selected="false" data-panel="conversationsPanel">Conversations</button>
           <button class="console-tab" type="button" role="tab" aria-selected="false" data-panel="watchtowerPanel">Watchtower</button>
           <button class="console-tab" type="button" role="tab" aria-selected="false" data-panel="testingPanel">Testing</button>
+          <button class="console-tab" type="button" role="tab" aria-selected="false" data-panel="previewPanel">Preview</button>
         </div>
 
         <div id="homePanel" class="console-panel active" role="tabpanel">
@@ -78,103 +79,222 @@
           </div>
         </div>
 
-        <div id="buildPanel" class="console-panel" role="tabpanel" hidden>
-          <div class="aop-header">
-            <div><p class="panel-label">Agent operating procedure</p><h3>Refund / Return Resolution</h3></div>
-            <div class="aop-meta"><span>v1.0</span><span>Global</span><span>Chat + 3</span><span id="aopStatus" class="status-pill neutral">Active mock</span></div>
+        <div id="buildPanel" class="console-panel build-workspace" role="tabpanel" hidden>
+          <div class="build-subnav" role="tablist" aria-label="Build sections">
+            <button class="build-subtab active" type="button" role="tab" aria-selected="true" data-build-view="knowledgeView">Knowledge</button>
+            <button class="build-subtab" type="button" role="tab" aria-selected="false" data-build-view="aopsView">AOPs</button>
+            <button class="build-subtab" type="button" role="tab" aria-selected="false" data-build-view="toolsView">Tools</button>
+            <button class="build-subtab" type="button" role="tab" aria-selected="false" data-build-view="suggestionsView">Suggestions</button>
           </div>
-          <div class="aop-block">
-            <h4>What is this AOP used for?</h4>
-            <p>Use this AOP when a customer asks to return a book, request a refund, report a damaged book, report a wrong item, or resolve a return eligibility issue.</p>
-          </div>
-          <div class="aop-block procedure">
-            <h4>Natural-language procedure</h4>
-            <ol>
-              <li><strong>Gather required information.</strong> Confirm authentication. Ask for the order number and return reason when missing.</li>
-              <li><strong>Check order ownership and status.</strong> Use <code>@orders.lookup</code> with the authenticated session. Reference <code>{{order.delivered_days_ago}}</code>.</li>
-              <li><strong>Check return eligibility.</strong> Use <code>@policy.check_return_window</code>. Continue at 30 days or fewer; otherwise link to Escalation Request AOP.</li>
-              <li><strong>Classify return reason.</strong> Damaged, crushed, broken, torn, or wrong items qualify. Escalate unclear reasons.</li>
-              <li><strong>Resolve eligible refund.</strong> Use <code>@refund.create_mock</code> and return funds to the original payment method.</li>
-              <li><strong>Escalate if needed.</strong> Use <code>@escalation.create_mock</code> and explain that a teammate must review the case.</li>
-            </ol>
-          </div>
-          <div class="aop-columns">
-            <div class="aop-block">
-              <h4>Tools / Actions</h4>
-              <ul class="compact-list">
-                <li><code>@orders.lookup</code><span>Session-scoped order data</span></li>
-                <li><code>@policy.retrieve</code><span>Relevant policy text</span></li>
-                <li><code>@policy.check_return_window</code><span>30-day eligibility check</span></li>
-                <li><code>@refund.create_mock</code><span>Mock refund action</span></li>
-                <li><code>@escalation.create_mock</code><span>Mock teammate handoff</span></li>
-              </ul>
+
+          <div id="knowledgeView" class="build-view active" role="tabpanel">
+            <div class="build-view-heading">
+              <div>
+                <p class="panel-label">Build</p>
+                <h3>Knowledge</h3>
+                <p>Policy snippets and instructions the Bookly agent can reference when answering customers.</p>
+              </div>
+              <button class="add-snippet-button" type="button" disabled>+ Add snippet</button>
             </div>
-            <div class="aop-block">
-              <h4>Linked AOPs</h4>
-              <ul><li>Escalation Request AOP</li><li>Order Status Lookup AOP</li><li>Shipping Policy Answer AOP</li><li>Refund Timing Question AOP</li></ul>
-              <h4>Metadata references</h4>
-              <div class="code-list"><code>{{user.authenticated}}</code><code>{{user.username}}</code><code>{{order.order_number}}</code><code>{{order.delivered_days_ago}}</code><code>{{return.reason}}</code><code>{{conversation.channel}}</code></div>
+
+            <label class="knowledge-search">
+              <span>Search</span>
+              <input id="knowledgeSearch" type="search" placeholder="Search by keyword, such as refund" />
+            </label>
+
+            <div class="knowledge-layout">
+              <aside class="knowledge-filters" aria-label="Knowledge filters">
+                <label><input id="customSnippetsOnly" type="checkbox" /> Custom snippets only</label>
+                <strong>Tag</strong>
+                <label><input type="radio" name="knowledgeTag" value="all" checked /> All policies (3)</label>
+                <label><input type="radio" name="knowledgeTag" value="returns" /> Returns and refunds (2)</label>
+                <label><input type="radio" name="knowledgeTag" value="shipping" /> Shipping (1)</label>
+                <strong>Source</strong>
+                <label><input type="radio" name="knowledgeSource" value="bookly" checked /> Bookly policies (3)</label>
+                <label><input type="radio" name="knowledgeSource" value="suggestion" /> Agent suggestion (0)</label>
+              </aside>
+
+              <div class="knowledge-results">
+                <p id="knowledgeResultCount" class="result-count">3 snippets</p>
+                <article class="knowledge-snippet" data-knowledge-search="returns policy return window books delivery" data-knowledge-tag="returns" data-knowledge-source="bookly">
+                  <div class="snippet-heading">
+                    <div><span class="source-mark">B</span><strong>Returns Policy</strong><small>Bookly policy document</small></div>
+                    <span class="status-pill success">Active</span>
+                  </div>
+                  <div class="snippet-copy">
+                    <strong>Return eligibility</strong>
+                    <p>Books can be returned within 30 days of delivery. Books must be unused or damaged on arrival to qualify for an automatic return.</p>
+                  </div>
+                </article>
+
+                <article class="knowledge-snippet" data-knowledge-search="refund policy damaged item original payment method timing" data-knowledge-tag="returns" data-knowledge-source="bookly">
+                  <div class="snippet-heading">
+                    <div><span class="source-mark">B</span><strong>Refund Policy</strong><small>Bookly policy document</small></div>
+                    <span class="status-pill success">Active</span>
+                  </div>
+                  <div class="snippet-copy">
+                    <strong>Refund handling</strong>
+                    <p>Damaged items qualify for a refund to the original payment method. Most refunds take 3-7 business days after approval.</p>
+                  </div>
+                </article>
+
+                <article class="knowledge-snippet" data-knowledge-search="shipping policy standard express business days free" data-knowledge-tag="shipping" data-knowledge-source="bookly">
+                  <div class="snippet-heading">
+                    <div><span class="source-mark">B</span><strong>Shipping Policy</strong><small>Bookly policy document</small></div>
+                    <span class="status-pill success">Active</span>
+                  </div>
+                  <div class="snippet-copy">
+                    <strong>Delivery timing</strong>
+                    <p>Standard shipping takes 3-5 business days. Express shipping takes 1-2 business days, and orders over $35 qualify for free standard shipping.</p>
+                  </div>
+                </article>
+              </div>
             </div>
           </div>
-          <div class="aop-block advanced-settings">
-            <h4>Advanced settings</h4>
-            <p><strong>Knowledge tag:</strong> <code>returns_refunds</code></p>
-            <p><strong>AOP visibility:</strong> All authenticated customers</p>
-            <p><strong>Force AOP selection:</strong> Off</p>
-            <small>Force selection is disabled because refund requests may need triage into shipping status, refund timing, or escalation.</small>
+
+          <div id="aopsView" class="build-view" role="tabpanel" hidden>
+            <div id="aopListView">
+              <div class="build-view-heading">
+                <div><p class="panel-label">Build</p><h3>Agent Operating Procedures</h3><p>Natural-language workflows that define how the Bookly agent gathers information, uses tools, and resolves customer requests.</p></div>
+                <button class="add-snippet-button" type="button" disabled>+ Create AOP</button>
+              </div>
+              <label class="aop-search"><span>Search</span><input id="aopSearch" type="search" placeholder="Search AOPs" /></label>
+              <div class="aop-table" role="table" aria-label="Bookly agent operating procedures">
+                <div class="aop-row aop-table-header" role="row"><span>Status</span><span>Name</span><span>Type</span><span>Updated</span><span>Version</span></div>
+                <button class="aop-row" type="button" data-aop-open data-aop-search="refund return resolution damaged book"><span><i class="status-dot live"></i>Live</span><strong>Refund / Return Resolution</strong><span>Text</span><span>Today</span><span>v1.0</span></button>
+                <div class="aop-row" data-aop-search="order status lookup tracking"><span><i class="status-dot live"></i>Live</span><strong>Order Status Lookup</strong><span>Text</span><span>1 day ago</span><span>v1.0</span></div>
+                <div class="aop-row" data-aop-search="shipping policy answer"><span><i class="status-dot live"></i>Live</span><strong>Shipping Policy Answer</strong><span>Text</span><span>2 days ago</span><span>v1.0</span></div>
+                <div class="aop-row" data-aop-search="escalation request teammate human"><span><i class="status-dot update"></i>Update</span><strong>Escalation Request</strong><span>Text</span><span>3 days ago</span><span>v0.9</span></div>
+                <div class="aop-row" data-aop-search="refund timing question"><span><i class="status-dot draft"></i>Draft</span><strong>Refund Timing Question</strong><span>Text</span><span>5 days ago</span><span>v0.4</span></div>
+              </div>
+            </div>
+
+            <div id="aopEditorView" hidden>
+              <div class="aop-editor-title">
+                <button id="backToAopList" class="back-icon-button" type="button" aria-label="Back to AOP list">&larr;</button>
+                <div><p class="panel-label">Editing AOP</p><h3>Refund / Return Resolution</h3></div>
+                <div class="aop-meta"><span>v1.0</span><span>Global</span><span id="aopStatus" class="status-pill neutral">Active mock</span></div>
+              </div>
+              <div class="aop-editor-section"><h4>What does this AOP do and when should it be used?</h4><p>Use this AOP when a customer asks to return a book, request a refund, report a damaged book, or resolve return eligibility.</p></div>
+              <div class="aop-editor-section">
+                <div class="aop-logic-heading"><h4>AOP Logic</h4><span class="data-label">Global</span></div>
+                <p class="aop-editor-hint">Use <code>@</code> for tools, <code>#</code> for linked AOPs, and <code>{{metadata}}</code> for conversation data.</p>
+                <ol class="aop-logic-list">
+                  <li>Confirm <code>{{user.authenticated}}</code> before using private order tools. Ask for the order number and return reason when missing.</li>
+                  <li>Use <code>@orders.lookup</code> with <code>{{user.username}}</code> and <code>{{order.order_number}}</code>. Do not reveal data for another customer.</li>
+                  <li>Use <code>@policy.check_return_window</code>. If <code>{{order.delivered_days_ago}}</code> is more than 30, go to <code>#Escalation Request</code>.</li>
+                  <li>Damaged, crushed, broken, torn, or wrong items qualify for an automatic mocked refund.</li>
+                  <li>Use <code>@refund.create_mock</code> when eligible. Otherwise use <code>@escalation.create_mock</code>.</li>
+                </ol>
+              </div>
+              <div class="aop-columns">
+                <div class="aop-editor-section"><h4>Linked AOPs</h4><ul><li>Escalation Request</li><li>Order Status Lookup</li><li>Refund Timing Question</li></ul></div>
+                <div class="aop-editor-section"><h4>Channels</h4><p>Chat, Email, Agent Assist, Voice</p></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="toolsView" class="build-view" role="tabpanel" hidden>
+            <div class="build-view-heading"><div><p class="panel-label">Build</p><h3>Tools</h3><p>Mock actions available to Bookly support workflows.</p></div></div>
+            <div class="build-tool-list">
+              <div><code>@orders.lookup</code><span>Retrieves order data scoped to the authenticated session.</span><strong>Read only</strong></div>
+              <div><code>@policy.retrieve</code><span>Retrieves relevant Bookly policy text.</span><strong>Read only</strong></div>
+              <div><code>@refund.create_mock</code><span>Creates a simulated refund for eligible returns.</span><strong>Mock action</strong></div>
+              <div><code>@escalation.create_mock</code><span>Creates a simulated teammate review handoff.</span><strong>Mock action</strong></div>
+            </div>
+          </div>
+
+          <div id="suggestionsView" class="build-view" role="tabpanel" hidden>
+            <div class="build-view-heading"><div><p class="panel-label">Build</p><h3>Suggestions</h3><p>Potential improvements discovered from recent support conversations.</p></div></div>
+            <div class="suggestion-item">
+              <span class="status-pill neutral">Knowledge gap</span>
+              <strong>Suggested addition</strong>
+              <p id="buildSuggestedGap">Complete a support conversation to generate a suggestion.</p>
+            </div>
           </div>
         </div>
 
-        <div id="tracePanel" class="console-panel" role="tabpanel" hidden>
-          <div class="panel-title-row">
-            <div><p class="panel-label">Latest agent turn</p><h3>Conversation Trace</h3></div>
-            <span id="traceAuth" class="status-pill neutral">No trace</span>
+        <div id="conversationsPanel" class="console-panel conversations-panel" role="tabpanel" hidden>
+          <div class="conversations-workspace">
+            <aside class="conversation-list-pane">
+              <div class="conversation-list-heading">
+                <p class="panel-label">Support review</p>
+                <h3>Conversations</h3>
+                <label class="conversation-search"><span>Search</span><input id="conversationSearch" type="search" placeholder="Search conversations" /></label>
+              </div>
+              <div class="conversation-list-meta"><strong>Latest conversations</strong><span>Simulated</span></div>
+              <div class="conversation-list">
+                <button id="latestConversationRow" class="conversation-row active" type="button" data-conversation-search="latest conversation">
+                  <span id="conversationLatestTag" class="conversation-tag">Waiting</span>
+                  <strong id="conversationLatestTitle">No live conversation yet</strong>
+                  <small id="conversationLatestTime">Latest agent turn</small>
+                </button>
+                <div class="conversation-row" data-conversation-search="shipping policy answered"><span class="conversation-tag">Shipping</span><strong>Shipping timing question</strong><small>12m ago - simulated</small></div>
+                <div class="conversation-row" data-conversation-search="order status resolved"><span class="conversation-tag">Order status</span><strong>Tracking update request</strong><small>38m ago - simulated</small></div>
+                <div class="conversation-row" data-conversation-search="refund escalation outside window"><span class="conversation-tag warning">Escalated</span><strong>Return policy exception</strong><small>1h ago - simulated</small></div>
+              </div>
+            </aside>
+
+            <section class="conversation-transcript-pane" aria-label="Selected conversation transcript">
+              <div class="conversation-person-heading">
+                <div><strong id="conversationPerson">No conversation selected</strong><span id="conversationChannel">Chat</span></div>
+                <span id="conversationAuth" class="status-pill neutral">Waiting</span>
+              </div>
+              <div id="conversationTranscript" class="conversation-transcript">
+                <p class="conversation-empty">Complete a customer support turn to review the transcript here.</p>
+              </div>
+            </section>
+
+            <aside class="conversation-overview-pane">
+              <section class="conversation-overview-section">
+                <h4>Overview</h4>
+                <span>Summary</span><p id="conversationSummary">No conversation has been analyzed.</p>
+                <span>Resolution</span><p id="conversationResolution">-</p>
+                <span>Tags</span><div id="conversationTags" class="tag-row"></div>
+              </section>
+              <section class="conversation-overview-section">
+                <h4>Agent details</h4>
+                <dl>
+                  <div><dt>Workflow</dt><dd id="conversationWorkflow">-</dd></div>
+                  <div><dt>Decision</dt><dd id="conversationDecision">-</dd></div>
+                  <div><dt>Risk</dt><dd id="conversationRisk">-</dd></div>
+                </dl>
+              </section>
+              <section class="conversation-overview-section review-qa">
+                <h4>Review + QA</h4>
+                <button type="button" disabled>Assign to teammate</button>
+                <label><span>Issue status</span><select><option>Unassigned</option><option>In review</option><option>Resolved</option></select></label>
+                <label><span>Resolution quality</span><select><option>Not reviewed</option><option>Correct</option><option>Needs improvement</option></select></label>
+                <label class="qa-check"><input type="checkbox" /> Trust and safety related</label>
+              </section>
+            </aside>
           </div>
-          <div class="trace-summary">
-            <div><span>Summary</span><strong id="traceSummary">Complete a support turn to create a trace.</strong></div>
-            <div><span>Resolution</span><strong id="traceResolution">-</strong></div>
-          </div>
-          <div id="traceTags" class="tag-row"></div>
-          <div class="latest-grid">
-            <div><span>Intent</span><strong id="traceIntent">-</strong></div>
-            <div><span>Workflow / AOP</span><strong id="traceWorkflow">-</strong></div>
-            <div><span>Decision</span><strong id="traceDecision">-</strong></div>
-            <div><span>Outcome</span><strong id="traceOutcome">-</strong></div>
-          </div>
-          <div class="trace-columns">
-            <div class="trace-group"><h4>Relevant knowledge</h4><div id="traceKnowledge" class="trace-list empty-state">No knowledge referenced yet.</div></div>
-            <div class="trace-group"><h4>Tools / actions</h4><div id="traceTools" class="trace-list empty-state">No tools called yet.</div></div>
-          </div>
-          <div class="trace-group"><h4>Audit log</h4><div id="traceAudit" class="audit-list empty-state">No audit events yet.</div></div>
         </div>
 
         <div id="watchtowerPanel" class="console-panel" role="tabpanel" hidden>
-          <div class="panel-title-row">
-            <div><p class="panel-label">Conversation analysis jobs</p><h3>Watchtower</h3></div>
-            <span class="data-label">Aggregate metrics simulated</span>
+          <div class="watchtower-page-heading">
+            <div><p class="panel-label">Conversation analysis jobs</p><h3>Watchtower</h3><p>Recurring mock analysis jobs for monitoring support quality and policy exceptions.</p></div>
+            <button class="add-snippet-button" type="button" disabled>+ Create Watchtower</button>
           </div>
-          <div class="watchtower-metrics">
-            <div><span>Conversations reviewed</span><strong>1,248 simulated</strong></div>
-            <div><span>Policy exception flag rate</span><strong>14% simulated</strong></div>
-            <div><span>Negative sentiment flag rate</span><strong>8% simulated</strong></div>
-            <div><span>Categories detected</span><strong>4 simulated</strong></div>
-          </div>
-          <div class="watchtower-layout">
-            <div class="watchtower-jobs" aria-label="Watchtower jobs">
-              <button class="watchtower-job active" type="button" data-watchtower-job="refund"><strong>Refund Policy Exceptions</strong><span>Recurring daily</span></button>
-              <button class="watchtower-job" type="button" data-watchtower-job="sentiment"><strong>Negative Sentiment</strong><span>Recurring daily</span></button>
-              <button class="watchtower-job new-job" type="button" disabled><strong>+ New Watchtower</strong><span>Demo only</span></button>
-            </div>
-            <div class="job-detail">
-              <h4 id="watchJobTitle">Refund Policy Exceptions</h4>
-              <p id="watchJobPurpose">Detect refund or return conversations that require teammate review or fall outside automatic policy.</p>
-              <dl>
-                <div><dt>Flag criteria</dt><dd id="watchJobCriteria">Outside the return window, missing order data, unclear reason, or teammate escalation.</dd></div>
-                <div><dt>Schedule</dt><dd>Recurring daily</dd></div>
-                <div><dt>Filters</dt><dd id="watchJobFilter">Refund / Return Resolution workflow</dd></div>
-                <div><dt>Categories</dt><dd id="watchJobCategories">Outside return window, Missing order data, Unclear refund reason, Human review required</dd></div>
-              </dl>
-            </div>
+          <div class="watchtower-card-grid">
+            <article class="watchtower-card">
+              <div class="watchtower-card-heading"><div><h4>Refund Policy Exceptions</h4><span>Refund / Return Resolution workflow</span></div><span class="status-pill neutral">Daily</span></div>
+              <div class="watchtower-card-metrics"><div><span>Conversations analyzed</span><strong>624 simulated</strong></div><div><span>Flagged rate</span><strong>14% simulated</strong></div></div>
+              <div class="chart-heading"><span>Daily breakdown</span><small>Illustrative</small></div>
+              <div class="bar-chart refund-chart" aria-label="Simulated daily refund exception chart">
+                <i style="--bar-height: 42%"></i><i style="--bar-height: 68%"></i><i style="--bar-height: 54%"></i><i style="--bar-height: 76%"></i><i style="--bar-height: 47%"></i><i style="--bar-height: 63%"></i><i style="--bar-height: 82%"></i><i style="--bar-height: 58%"></i><i style="--bar-height: 71%"></i><i style="--bar-height: 51%"></i><i style="--bar-height: 66%"></i><i style="--bar-height: 45%"></i>
+              </div>
+              <p class="watchtower-card-note">Flags outside-window requests, missing order data, unclear reasons, and teammate handoffs.</p>
+            </article>
+            <article class="watchtower-card">
+              <div class="watchtower-card-heading"><div><h4>Negative Sentiment</h4><span>All support conversations</span></div><span class="status-pill neutral">Daily</span></div>
+              <div class="watchtower-card-metrics"><div><span>Conversations analyzed</span><strong>1,248 simulated</strong></div><div><span>Flagged rate</span><strong>8% simulated</strong></div></div>
+              <div class="chart-heading"><span>Daily breakdown</span><small>Illustrative</small></div>
+              <div class="bar-chart sentiment-chart" aria-label="Simulated daily negative sentiment chart">
+                <i style="--bar-height: 35%"></i><i style="--bar-height: 52%"></i><i style="--bar-height: 46%"></i><i style="--bar-height: 61%"></i><i style="--bar-height: 43%"></i><i style="--bar-height: 57%"></i><i style="--bar-height: 49%"></i><i style="--bar-height: 70%"></i><i style="--bar-height: 55%"></i><i style="--bar-height: 39%"></i><i style="--bar-height: 63%"></i><i style="--bar-height: 48%"></i>
+              </div>
+              <p class="watchtower-card-note">Flags frustration, urgency, repeated confusion, dissatisfaction, or requests for a human.</p>
+            </article>
           </div>
           <div class="latest-watchtower">
             <div class="panel-title-row"><div><p class="panel-label">Latest conversation reasoning</p><h4 id="watchMatched">No conversation analyzed</h4></div><span id="watchFlag" class="status-pill neutral">Waiting</span></div>
@@ -198,6 +318,41 @@
             <div class="test-row" data-test-decision="blocked_private_tool_access"><span>No login</span><span>Block private tool access</span><strong>Pass</strong></div>
             <div class="test-row" data-test-decision="policy_answered"><span>Shipping policy question</span><span>Answer from policy</span><strong>Pass</strong></div>
             <div class="test-row" data-test-decision="clarification_requested"><span>Ambiguous customer message</span><span>Triage / clarify</span><strong>Pass</strong></div>
+          </div>
+        </div>
+
+        <div id="previewPanel" class="console-panel preview-panel" role="tabpanel" hidden>
+          <div class="preview-heading">
+            <div><p class="panel-label">Agent simulator</p><h3>Preview</h3><p>Run a mock customer message through the live Bookly orchestration endpoint.</p></div>
+            <div class="preview-mode" role="tablist" aria-label="Preview channel">
+              <button class="preview-mode-button active" type="button" role="tab" aria-selected="true" data-preview-mode="chatPreview">Chat</button>
+              <button class="preview-mode-button" type="button" role="tab" aria-selected="false" data-preview-mode="emailPreview">Email</button>
+            </div>
+          </div>
+
+          <div id="chatPreview" class="preview-view" role="tabpanel">
+            <div class="preview-canvas chat-preview-canvas">
+              <div class="preview-chat-window">
+                <div class="preview-chat-header"><strong>Bookly Support</strong><span>Agent preview</span></div>
+                <div class="preview-response"><span>AI response</span><p id="chatPreviewResponse">Run a message to preview the agent response.</p><small id="chatPreviewMeta">No preview run yet.</small></div>
+                <form id="chatPreviewForm" class="preview-input-row">
+                  <input id="chatPreviewInput" type="text" value="How long does shipping usually take?" aria-label="Chat preview message" />
+                  <button type="submit">Run preview</button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div id="emailPreview" class="preview-view" role="tabpanel" hidden>
+            <div class="preview-canvas email-preview-canvas">
+              <form id="emailPreviewForm" class="email-compose">
+                <label><span>To</span><input type="email" value="support@bookly.com" readonly /></label>
+                <label><span>Subject</span><input id="emailPreviewSubject" type="text" value="Shipping question" /></label>
+                <label class="email-body-label"><span>Message</span><textarea id="emailPreviewInput">How long does shipping usually take?</textarea></label>
+                <button type="submit">Run email preview</button>
+              </form>
+              <div class="email-preview-response"><span>AI email response</span><strong id="emailPreviewReplySubject">Re: Shipping question</strong><p id="emailPreviewResponse">Run the email to preview the response.</p><small id="emailPreviewMeta">No preview run yet.</small></div>
+            </div>
           </div>
         </div>
       </section>

@@ -21,12 +21,12 @@ function renderOperationsConsole(trace) {
   renderHome(trace);
   renderInsights(trace);
   renderBuildAop(trace);
-  renderConversationTrace(trace);
+  renderConversations(trace);
   renderWatchtower(trace);
   renderTesting(trace);
 
   const liveStatus = document.querySelector("#consoleLiveStatus");
-  setPill(liveStatus, `Trace updated: ${readable(trace.decision)}`, "success");
+  setPill(liveStatus, `Conversation updated: ${readable(trace.decision)}`, "success");
 }
 
 function renderHome(trace) {
@@ -63,83 +63,54 @@ function renderBuildAop(trace) {
   const status = document.querySelector("#aopStatus");
   const isActive = trace.intent === "refund_return";
   setPill(status, isActive ? "Selected for latest turn" : "Active mock", isActive ? "success" : "neutral");
-  document.querySelector("#buildPanel").classList.toggle("aop-selected", isActive);
+  setText("buildSuggestedGap", trace.suggestedKnowledgeGap || "No knowledge gap suggested.");
 }
 
-function clearAndBuild(containerId, items, buildItem, emptyText) {
-  const container = document.querySelector(`#${containerId}`);
-  container.innerHTML = "";
-  container.classList.toggle("empty-state", items.length === 0);
+function renderConversations(trace) {
+  const person = trace.authenticated ? trace.username : "Anonymous customer";
+  setText("conversationPerson", person);
+  setText("conversationSummary", trace.summary);
+  setText("conversationResolution", trace.resolution);
+  setText("conversationWorkflow", `${trace.workflow} ${trace.workflowVersion}`);
+  setText("conversationDecision", readable(trace.decision));
+  setText("conversationRisk", readable(trace.watchtower.risk));
+  setText("conversationLatestTag", readable(trace.intent));
+  setText("conversationLatestTitle", trace.summary);
+  setText("conversationLatestTime", "Updated just now");
 
-  if (items.length === 0) {
-    container.textContent = emptyText;
+  const authPill = document.querySelector("#conversationAuth");
+  setPill(authPill, trace.authenticated ? "Authenticated" : "Not authenticated", trace.authenticated ? "success" : "warning");
+
+  const tags = document.querySelector("#conversationTags");
+  tags.innerHTML = "";
+  (trace.tags || []).forEach((tag) => {
+    const element = document.createElement("span");
+    element.textContent = readable(tag);
+    tags.appendChild(element);
+  });
+
+  const transcript = document.querySelector("#conversationTranscript");
+  transcript.innerHTML = "";
+  const messages = trace.transcript || [];
+
+  if (messages.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "conversation-empty";
+    empty.textContent = "This saved conversation does not include a transcript.";
+    transcript.appendChild(empty);
     return;
   }
 
-  items.forEach((item) => container.appendChild(buildItem(item)));
-}
-
-function renderConversationTrace(trace) {
-  setText("traceSummary", trace.summary);
-  setText("traceResolution", trace.resolution);
-  setText("traceIntent", readable(trace.intent));
-  setText("traceWorkflow", `${trace.workflow} ${trace.workflowVersion}`);
-  setText("traceDecision", readable(trace.decision));
-
-  let outcome = "In progress";
-  if (trace.outcome.escalated) {
-    outcome = "Escalated";
-  } else if (trace.outcome.resolved) {
-    outcome = "Resolved";
-  }
-  setText("traceOutcome", outcome);
-
-  const authPill = document.querySelector("#traceAuth");
-  const authText = trace.authenticated ? `Authenticated: ${trace.username}` : "Not authenticated";
-  setPill(authPill, authText, trace.authenticated ? "success" : "warning");
-
-  clearAndBuild("traceTags", trace.tags || [], (tag) => {
-    const element = document.createElement("span");
-    element.textContent = tag;
-    return element;
-  }, "No tags");
-
-  clearAndBuild("traceKnowledge", trace.relevantKnowledge || [], (knowledge) => {
+  messages.forEach((message) => {
     const item = document.createElement("div");
-    item.className = "trace-item";
-    const title = document.createElement("strong");
-    const snippet = document.createElement("p");
-    title.textContent = knowledge.title;
-    snippet.textContent = knowledge.snippet;
-    item.append(title, snippet);
-    return item;
-  }, "No policy knowledge was needed for this turn.");
-
-  clearAndBuild("traceTools", trace.tools || [], (tool) => {
-    const item = document.createElement("div");
-    item.className = "trace-item";
-    const heading = document.createElement("div");
-    heading.className = "trace-item-heading";
-    const name = document.createElement("code");
-    const status = document.createElement("span");
-    const detail = document.createElement("p");
-    name.textContent = tool.name;
-    setPill(status, readable(tool.status), tool.status === "blocked" || tool.status === "failed" ? "warning" : "success");
-    detail.textContent = tool.detail;
-    heading.append(name, status);
-    item.append(heading, detail);
-    return item;
-  }, "No tools were called for this turn.");
-
-  clearAndBuild("traceAudit", trace.auditLog || [], (event) => {
-    const row = document.createElement("div");
-    const step = document.createElement("strong");
-    const detail = document.createElement("span");
-    step.textContent = event.step;
-    detail.textContent = event.detail;
-    row.append(step, detail);
-    return row;
-  }, "No audit events yet.");
+    item.className = `transcript-message ${message.role}`;
+    const role = document.createElement("span");
+    const content = document.createElement("p");
+    role.textContent = message.role === "user" ? "Customer" : "Bookly Agent";
+    content.textContent = message.content;
+    item.append(role, content);
+    transcript.appendChild(item);
+  });
 }
 
 function renderWatchtower(trace) {
@@ -177,33 +148,164 @@ document.querySelectorAll(".console-tab").forEach((tab) => {
   });
 });
 
-const watchtowerJobs = {
-  refund: {
-    title: "Refund Policy Exceptions",
-    purpose: "Detect refund or return conversations that require teammate review or fall outside automatic policy.",
-    criteria: "Outside the return window, missing order data, unclear reason, or teammate escalation.",
-    filter: "Refund / Return Resolution workflow",
-    categories: "Outside return window, Missing order data, Unclear refund reason, Human review required"
-  },
-  sentiment: {
-    title: "Negative Sentiment",
-    purpose: "Detect conversations where the customer appears frustrated, angry, confused, or dissatisfied.",
-    criteria: "Frustration, urgency, repeated confusion, dissatisfaction, or a request to speak to a human.",
-    filter: "All support conversations",
-    categories: "Frustrated customer, Repeated issue, Unhappy with policy, Escalation requested"
-  }
-};
+document.querySelectorAll(".build-subtab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".build-subtab").forEach((otherTab) => {
+      const isSelected = otherTab === tab;
+      otherTab.classList.toggle("active", isSelected);
+      otherTab.setAttribute("aria-selected", String(isSelected));
+    });
 
-document.querySelectorAll("[data-watchtower-job]").forEach((button) => {
-  button.addEventListener("click", () => {
-    document.querySelectorAll("[data-watchtower-job]").forEach((job) => job.classList.toggle("active", job === button));
-    const job = watchtowerJobs[button.dataset.watchtowerJob];
-    setText("watchJobTitle", job.title);
-    setText("watchJobPurpose", job.purpose);
-    setText("watchJobCriteria", job.criteria);
-    setText("watchJobFilter", job.filter);
-    setText("watchJobCategories", job.categories);
+    document.querySelectorAll(".build-view").forEach((view) => {
+      const isSelected = view.id === tab.dataset.buildView;
+      view.hidden = !isSelected;
+      view.classList.toggle("active", isSelected);
+    });
   });
+});
+
+function filterKnowledge() {
+  const query = document.querySelector("#knowledgeSearch").value.toLowerCase().trim();
+  const tag = document.querySelector('input[name="knowledgeTag"]:checked').value;
+  const source = document.querySelector('input[name="knowledgeSource"]:checked').value;
+  const customOnly = document.querySelector("#customSnippetsOnly").checked;
+  let visibleCount = 0;
+
+  document.querySelectorAll(".knowledge-snippet").forEach((snippet) => {
+    const matchesSearch = snippet.dataset.knowledgeSearch.includes(query);
+    const matchesTag = tag === "all" || snippet.dataset.knowledgeTag === tag;
+    const matchesSource = snippet.dataset.knowledgeSource === source;
+    const isVisible = matchesSearch && matchesTag && matchesSource && !customOnly;
+    snippet.hidden = !isVisible;
+
+    if (isVisible) {
+      visibleCount += 1;
+    }
+  });
+
+  setText("knowledgeResultCount", `${visibleCount} ${visibleCount === 1 ? "snippet" : "snippets"}`);
+}
+
+document.querySelector("#knowledgeSearch").addEventListener("input", filterKnowledge);
+document.querySelectorAll('.knowledge-filters input').forEach((input) => {
+  input.addEventListener("change", filterKnowledge);
+});
+
+document.querySelector("#conversationSearch").addEventListener("input", (event) => {
+  const query = event.target.value.toLowerCase().trim();
+  document.querySelectorAll("[data-conversation-search]").forEach((row) => {
+    row.hidden = !row.dataset.conversationSearch.includes(query);
+  });
+});
+
+document.querySelector("#aopSearch").addEventListener("input", (event) => {
+  const query = event.target.value.toLowerCase().trim();
+
+  document.querySelectorAll("[data-aop-search]").forEach((row) => {
+    row.hidden = !row.dataset.aopSearch.includes(query);
+  });
+});
+
+document.querySelector("[data-aop-open]").addEventListener("click", () => {
+  document.querySelector("#aopListView").hidden = true;
+  document.querySelector("#aopEditorView").hidden = false;
+});
+
+document.querySelector("#backToAopList").addEventListener("click", () => {
+  document.querySelector("#aopEditorView").hidden = true;
+  document.querySelector("#aopListView").hidden = false;
+});
+
+document.querySelectorAll(".preview-mode-button").forEach((button) => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".preview-mode-button").forEach((otherButton) => {
+      const isSelected = otherButton === button;
+      otherButton.classList.toggle("active", isSelected);
+      otherButton.setAttribute("aria-selected", String(isSelected));
+    });
+
+    document.querySelectorAll(".preview-view").forEach((view) => {
+      view.hidden = view.id !== button.dataset.previewMode;
+    });
+  });
+});
+
+async function runAgentPreview(message, responseId, metaId) {
+  const responseElement = document.querySelector(`#${responseId}`);
+  const metaElement = document.querySelector(`#${metaId}`);
+  responseElement.textContent = "Running preview...";
+  metaElement.textContent = "Routing the request";
+
+  try {
+    const response = await fetch("/api/chat-stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [{ role: "user", content: message }],
+        activeIntent: "",
+        sessionToken: "",
+        conversationId: `preview_${Date.now().toString(36)}`
+      })
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let pendingText = "";
+    let answerText = "";
+
+    while (true) {
+      const result = await reader.read();
+      if (result.done) {
+        break;
+      }
+
+      pendingText += decoder.decode(result.value, { stream: true });
+      const lines = pendingText.split("\n");
+      pendingText = lines.pop();
+
+      for (const line of lines) {
+        if (!line.trim()) {
+          continue;
+        }
+
+        const event = JSON.parse(line);
+        if (event.type === "status") {
+          responseElement.textContent = event.text;
+        }
+        if (event.type === "error") {
+          responseElement.textContent = event.text;
+        }
+        if (event.type === "meta" && event.trace) {
+          metaElement.textContent = `${event.trace.workflow} - ${readable(event.trace.decision)}`;
+        }
+        if (event.type === "chunk") {
+          answerText += event.text;
+          responseElement.textContent = answerText.trimStart();
+        }
+      }
+    }
+  } catch (error) {
+    responseElement.textContent = "The preview could not reach the Bookly agent.";
+    metaElement.textContent = "Preview unavailable";
+  }
+}
+
+document.querySelector("#chatPreviewForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const message = document.querySelector("#chatPreviewInput").value.trim();
+  if (message) {
+    await runAgentPreview(message, "chatPreviewResponse", "chatPreviewMeta");
+  }
+});
+
+document.querySelector("#emailPreviewForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const subject = document.querySelector("#emailPreviewSubject").value.trim();
+  const message = document.querySelector("#emailPreviewInput").value.trim();
+  setText("emailPreviewReplySubject", `Re: ${subject || "Bookly support request"}`);
+  if (message) {
+    await runAgentPreview(message, "emailPreviewResponse", "emailPreviewMeta");
+  }
 });
 
 function loadLatestTrace() {
