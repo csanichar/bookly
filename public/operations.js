@@ -67,18 +67,7 @@ function renderHome(trace) {
 }
 
 function renderInsights(trace) {
-  const categories = {
-    approved_refund: "Refund / Return Issues > Damaged item",
-    escalated_outside_return_window: "Refund / Return Issues > Outside return window",
-    needs_order_number: "Refund / Return Issues > Missing order number",
-    needs_return_reason: "Refund / Return Issues > Unclear refund reason",
-    order_status_found: "Order Status",
-    policy_answered: "Shipping Questions",
-    escalated_customer_request: "Human Escalations",
-    blocked_private_tool_access: "Refund / Return Issues > Authentication required"
-  };
-
-  setText("latestCategory", categories[trace.decision] || readable(trace.intent));
+  setText("latestCategory", trace.watchtower.category || readable(trace.intent));
   setText("insightsSummary", trace.summary);
 }
 
@@ -152,6 +141,7 @@ function renderWatchtower(trace) {
   setText("watchRisk", readable(watchtower.risk));
   setText("watchCategory", watchtower.category || "None");
   setText("watchSeverity", readable(watchtower.severity));
+  setText("watchSource", readable(watchtower.classificationSource));
   setText("watchReason", watchtower.flagReason);
   setText("watchAction", watchtower.recommendedAction);
 
@@ -192,6 +182,7 @@ document.querySelectorAll(".console-tab").forEach((tab) => {
 
 document.querySelector("#failedRefundConversationRow").addEventListener("click", openFailedRefundConversation);
 document.querySelector("[data-open-failed-refund]").addEventListener("click", openFailedRefundConversation);
+setText("failedTestRationale", FAILED_REFUND_TEST_TRACE.resolution);
 document.querySelector("#latestConversationRow").addEventListener("click", () => {
   if (latestLiveTrace) {
     renderConversations(latestLiveTrace);

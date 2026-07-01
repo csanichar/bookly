@@ -178,7 +178,7 @@ def parse_json_text(text):
     return json.loads(text)
 
 
-def route_with_claude(latest_text, active_intent):
+def route_with_claude(latest_text, active_intent, messages=None):
     """Ask Claude Haiku which support flow should handle this message."""
     system_prompt = (
         "You route customer support messages for Bookly. Return JSON only. "
@@ -189,19 +189,27 @@ def route_with_claude(latest_text, active_intent):
         "payments, accounts, or addresses. is_new_topic is true when the latest "
         "message clearly starts a different support topic than active_intent. "
         "Extract order_number when present. Extract reason for refund_return when the "
-        "customer gives any reason in natural language."
+        "customer gives any reason in natural language. Independently evaluate the recent conversation "
+        "for QA classification. category is a short customer-issue label and may differ from "
+        "intent. flags must contain zero or more of: negative_sentiment, escalation_requested, "
+        "missing_information, authentication_concern. flag_reason is one short explanation "
+        "based only on the customer's language. Do not infer tool results or order history."
     )
 
     user_prompt = json.dumps(
         {
             "active_intent": active_intent,
             "latest_customer_message": latest_text,
+            "recent_conversation": (messages or [])[-6:],
             "required_json_shape": {
                 "intent": "order_status | refund_return | policy | human_escalation | general",
                 "private_request": "boolean",
                 "is_new_topic": "boolean",
                 "order_number": "string or empty string",
                 "reason": "string or empty string",
+                "category": "short customer issue label",
+                "flags": "array of QA flag strings",
+                "flag_reason": "short explanation of the QA judgment",
             },
         }
     )
@@ -215,6 +223,10 @@ def route_with_claude(latest_text, active_intent):
             "is_new_topic": bool(routed.get("is_new_topic", False)),
             "order_number": str(routed.get("order_number", "")),
             "reason": str(routed.get("reason", "")),
+            "category": str(routed.get("category") or "General inquiry")[:80],
+            "flags": clean_watchtower_flags(routed.get("flags", [])),
+            "flag_reason": str(routed.get("flag_reason") or "No conversational risk detected.")[:240],
+            "classification_source": "claude_router",
         }
 
     return fallback_route(latest_text, active_intent)
@@ -227,18 +239,29 @@ def fallback_route(latest_text, active_intent):
     private_request = False
     order_number = find_order_number(latest_text) or ""
     reason = ""
+    category = "General inquiry"
+    flags = []
 
     if asks_for_human(text):
         intent = "human_escalation"
         private_request = False
+        category = "Escalation request"
+        flags.append("escalation_requested")
     elif "refund" in text or ("return" in text and "policy" not in text):
         intent = "refund_return"
         private_request = True
+        category = "Refund or return request"
     elif "order" in text or "tracking" in text or "where is" in text:
         intent = "order_status"
         private_request = True
+        category = "Order status request"
     elif "shipping" in text or "policy" in text or "how long" in text:
         intent = "policy"
+        category = "Policy question"
+
+    negative_words = ["angry", "frustrated", "upset", "unacceptable", "disappointed"]
+    if any(word in text for word in negative_words):
+        flags.append("negative_sentiment")
 
     is_new_topic = active_intent not in ["", intent] and intent != "general"
 
@@ -246,6 +269,7 @@ def fallback_route(latest_text, active_intent):
         intent = active_intent
         is_new_topic = False
         private_request = active_intent in ["order_status", "refund_return"]
+        category = "Refund follow-up" if active_intent == "refund_return" else "Order status follow-up"
 
     if intent == "refund_return":
         reason = extract_return_reason(latest_text)
@@ -256,7 +280,33 @@ def fallback_route(latest_text, active_intent):
         "is_new_topic": is_new_topic,
         "order_number": order_number,
         "reason": reason,
+        "category": category,
+        "flags": flags,
+        "flag_reason": fallback_flag_reason(flags),
+        "classification_source": "local_fallback",
     }
+
+
+def clean_watchtower_flags(flags):
+    """Keep only the QA flags understood by this demo."""
+    allowed = {
+        "negative_sentiment",
+        "escalation_requested",
+        "missing_information",
+        "authentication_concern",
+    }
+    if not isinstance(flags, list):
+        return []
+    return [str(flag) for flag in flags if str(flag) in allowed]
+
+
+def fallback_flag_reason(flags):
+    """Explain the local QA fallback when Claude routing is unavailable."""
+    if "negative_sentiment" in flags:
+        return "The customer used language that indicates frustration or dissatisfaction."
+    if "escalation_requested" in flags:
+        return "The customer explicitly asked for a human teammate."
+    return "No conversational risk detected by the local fallback."
 
 
 def fill_route_from_context(route, messages):
@@ -398,75 +448,68 @@ def knowledge_for_trace(intent, answer):
 
 
 def build_watchtower(trace):
-    """Explain whether the latest turn needs human review."""
-    decision = trace["decision"]
+    """Combine the model's QA judgment with facts returned by tools."""
+    flags = list(trace.get("modelFlags", []))
+    tools = trace.get("tools", [])
+    tool_notes = []
 
-    if decision == "approved_refund":
-        return {
-            "matched": False,
-            "risk": "low",
-            "matchedWatchtower": "",
-            "category": "",
-            "severity": "low",
-            "flagReason": (
-                "No Watchtower criteria matched. The customer was authenticated, the order was "
-                "found under the authenticated session, the delivery date was inside the 30-day "
-                "return window, and the damaged-item reason qualified for automatic refund."
-            ),
-            "recommendedAction": "No teammate review required.",
-            "jobs": [],
-        }
+    for tool in tools:
+        name = tool.get("name", "")
+        status = tool.get("status", "")
 
-    if decision == "escalated_outside_return_window":
-        return {
-            "matched": True,
-            "risk": "medium",
-            "matchedWatchtower": "Refund Policy Exceptions",
-            "category": "Outside return window",
-            "severity": "medium",
-            "flagReason": (
-                "The customer requested a refund for an order delivered more than 30 days ago. "
-                "Bookly policy allows automatic returns within 30 days, so the Refund / Return "
-                "Resolution AOP correctly escalated the case for teammate review."
-            ),
-            "recommendedAction": "Teammate review required. Confirm whether a policy exception should be granted.",
-            "jobs": ["Refund Policy Exceptions"],
-        }
+        if name == "@policy.check_return_window" and status == "failed":
+            flags.append("policy_exception")
+            tool_notes.append("The return-window tool found that the order was outside the 30-day policy.")
+        if name == "@orders.lookup" and status == "not_found":
+            flags.append("missing_order_data")
+            tool_notes.append("The order lookup could not find the order under the authenticated account.")
+        if name == "@orders.lookup" and status == "blocked":
+            flags.append("authentication_concern")
+            tool_notes.append("Private order access was blocked because authentication was missing.")
 
-    if decision in ["order_not_found", "needs_return_reason", "escalated_unclear_reason"]:
-        category = "Missing order data" if decision == "order_not_found" else "Unclear refund reason"
-        return {
-            "matched": True,
-            "risk": "medium",
-            "matchedWatchtower": "Refund Policy Exceptions",
-            "category": category,
-            "severity": "medium",
-            "flagReason": decision_detail(decision),
-            "recommendedAction": "Review the conversation if the customer cannot provide the missing information.",
-            "jobs": ["Refund Policy Exceptions"],
-        }
+    flags = list(dict.fromkeys(flags))
+    negative_flags = {"negative_sentiment", "escalation_requested"}
+    refund_flags = {
+        "policy_exception",
+        "missing_information",
+        "missing_order_data",
+        "authentication_concern",
+    }
+    jobs = []
 
-    if decision == "escalated_customer_request":
-        return {
-            "matched": True,
-            "risk": "medium",
-            "matchedWatchtower": "Negative Sentiment",
-            "category": "Escalation requested",
-            "severity": "medium",
-            "flagReason": "The customer asked to speak with a human teammate.",
-            "recommendedAction": "A teammate should follow up using the supplied conversation context.",
-            "jobs": ["Negative Sentiment"],
-        }
+    if any(flag in negative_flags for flag in flags):
+        jobs.append("Negative Sentiment")
+    if any(flag in refund_flags for flag in flags):
+        jobs.append("Refund Policy Exceptions")
+
+    matched = bool(jobs)
+    high_risk = "negative_sentiment" in flags and "escalation_requested" in flags
+    severity = "high" if high_risk else "medium" if matched else "low"
+    model_reason = trace.get("modelFlagReason", "No conversational risk detected.")
+    reason_parts = [f"Model judgment: {model_reason}"]
+    if tool_notes:
+        reason_parts.append(f"Tool evidence: {' '.join(tool_notes)}")
+
+    if "policy_exception" in flags:
+        recommended_action = "Teammate review required. Confirm whether a return-policy exception should be granted."
+    elif any(flag in negative_flags for flag in flags):
+        recommended_action = "A teammate should review the conversation and follow up with the supplied context."
+    elif matched:
+        recommended_action = "Review the conversation and verify the missing or restricted information."
+    else:
+        recommended_action = "No teammate review required."
 
     return {
-        "matched": False,
-        "risk": "low",
-        "matchedWatchtower": "",
-        "category": "",
-        "severity": "low",
-        "flagReason": "No Watchtower criteria matched for the latest conversation turn.",
-        "recommendedAction": "No teammate review required.",
-        "jobs": [],
+        "matched": matched,
+        "risk": severity,
+        "matchedWatchtower": " + ".join(jobs),
+        "category": trace.get("modelCategory", "General inquiry"),
+        "severity": severity,
+        "flags": flags,
+        "flagReason": " ".join(part for part in reason_parts if part),
+        "recommendedAction": recommended_action,
+        "jobs": jobs,
+        "classificationSource": trace.get("classificationSource", "unknown"),
     }
 
 
@@ -480,10 +523,9 @@ def build_trace(route, answer, user, messages):
     reason = answer.get("reason") or route.get("reason", "")
     escalated = bool(answer.get("escalated", False))
     resolved = decision in ["approved_refund", "order_status_found", "policy_answered"]
-    tags = [intent]
+    tags = [route.get("category") or "General inquiry"]
+    tags.extend(route.get("flags", []))
 
-    if "damaged" in reason.lower() or "crushed" in reason.lower():
-        tags.append("damaged_item")
     if resolved:
         tags.append("resolved")
     if escalated:
@@ -555,6 +597,10 @@ def build_trace(route, answer, user, messages):
         "orderNumber": order_number,
         "returnReason": reason,
         "decision": decision,
+        "modelCategory": route.get("category", "General inquiry"),
+        "modelFlags": route.get("flags", []),
+        "modelFlagReason": route.get("flag_reason", "No conversational risk detected."),
+        "classificationSource": route.get("classification_source", "unknown"),
         "transcript": transcript,
         "relevantKnowledge": knowledge_for_trace(intent, answer),
         "tools": answer.get("tools", []),
@@ -594,6 +640,7 @@ def build_trace(route, answer, user, messages):
         ),
     }
     trace["watchtower"] = build_watchtower(trace)
+    trace["tags"] = list(dict.fromkeys(trace["tags"] + trace["watchtower"]["flags"]))
     return trace
 
 
@@ -978,7 +1025,7 @@ def handle_chat(body):
         messages = []
 
     latest_text = latest_user_message(messages)
-    route = route_with_claude(latest_text, active_intent)
+    route = route_with_claude(latest_text, active_intent, messages)
     route = fill_route_from_context(route, messages)
     route["conversation_id"] = str(body.get("conversationId", "conv_demo"))[:80]
 

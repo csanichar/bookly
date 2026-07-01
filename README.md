@@ -41,6 +41,8 @@ It is clearly labeled `Decagon-inspired CX Operations Console`. It is a mock ope
 
 After each agent turn, the backend sends one shared `trace` object to the browser. The customer page saves the latest trace in browser storage, and the operations page reads it to update the workflow, decision, tool calls, audit log, outcome, and Watchtower reasoning. If both pages are open, the console updates automatically.
 
+The existing Claude routing call also makes a separate QA judgment by returning a conversation category, flags, and a short rationale. Watchtower combines that model judgment with tool facts, such as a failed 30-day return-window check, without translating the final route decision through a category lookup.
+
 For the strongest demo sequence:
 
 1. Open the Operations Console link in a separate tab.
@@ -94,6 +96,8 @@ Expected: the agent asks the customer to log in. The trace shows **Blocked Priva
 ### Inspecting a Failed QA Test
 
 Open **Testing** in the Operations Console. The failed test shows a customer asking for a human after an outside-window refund denial. Select **Review** to open its simulated transcript in **Conversations**, where the missed escalation and **Needs improvement** QA result are visible.
+
+Each test expands into ordered checkpoints and an evaluation rationale. These tests are illustrative and do not execute a real CI/CD evaluation harness.
 
 
 ## How It Works

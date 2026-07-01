@@ -1843,12 +1843,44 @@ button.conversation-row {
   overflow: hidden;
 }
 
-.test-row {
+.test-run-context {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #475467;
+  font-size: 11px;
+}
+
+.test-run-context small {
+  padding: 4px 7px;
+  color: #667085;
+  background: white;
+  border: 1px solid #d0d5dd;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.test-table-header,
+.test-summary {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr) 70px 90px;
   gap: 12px;
   align-items: center;
+}
+
+.test-table-header {
   padding: 11px 13px;
+  color: #667085;
+  background: #f2f4f7;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.test-row {
   border-bottom: 1px solid #e2e8f0;
   font-size: 12px;
   line-height: 1.4;
@@ -1858,16 +1890,77 @@ button.conversation-row {
   border-bottom: 0;
 }
 
-.test-row.header {
-  color: #667085;
-  background: #f2f4f7;
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
+.test-summary {
+  padding: 12px 13px;
+  cursor: pointer;
+  list-style: none;
 }
 
-.test-row strong {
+.test-summary::-webkit-details-marker {
+  display: none;
+}
+
+.test-summary:hover {
+  background: #f8fafc;
+}
+
+.test-status.pass,
+.checkpoint-status.pass {
   color: #166534;
+}
+
+.expand-label {
+  color: #315f86;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.test-details {
+  padding: 4px 13px 16px;
+  background: #fbfcfe;
+  border-top: 1px solid #eef2f6;
+}
+
+.checkpoint-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0 0 0 28px;
+}
+
+.checkpoint-list li {
+  position: relative;
+  padding: 9px 64px 9px 0;
+  color: #344054;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.checkpoint-status {
+  position: absolute;
+  top: 9px;
+  right: 0;
+  font-size: 11px;
+}
+
+.checkpoint-status.fail {
+  color: #b42318;
+}
+
+.evaluation-rationale {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 12px;
+  margin: 14px 0 0;
+  padding: 12px;
+  color: #475467;
+  background: white;
+  border-left: 3px solid #315f86;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.evaluation-rationale strong {
+  color: #1d2939;
 }
 
 .test-row.failed-test {
@@ -1875,7 +1968,7 @@ button.conversation-row {
   box-shadow: inset 3px 0 #d92d20;
 }
 
-.test-row .test-status.fail {
+.test-status.fail {
   color: #b42318;
 }
 
@@ -1889,6 +1982,10 @@ button.conversation-row {
   font-size: 11px;
   font-weight: 800;
   cursor: pointer;
+}
+
+.test-details .test-review-button {
+  margin-top: 12px;
 }
 
 .test-review-button:hover {
@@ -2068,12 +2165,27 @@ button.conversation-row {
     border-top: 1px solid #e2e8f0;
   }
 
-  .test-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
+  .test-run-context {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
-  .test-row.header {
+  .test-table-header {
     display: none;
+  }
+
+  .test-summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 10px;
+  }
+
+  .test-summary > span:first-child,
+  .test-summary > span:nth-child(2) {
+    grid-column: 1 / -1;
+  }
+
+  .evaluation-rationale {
+    grid-template-columns: 1fr;
+    gap: 5px;
   }
 }

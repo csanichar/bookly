@@ -378,6 +378,7 @@
               <div><span>Risk</span><strong id="watchRisk">-</strong></div>
               <div><span>Category</span><strong id="watchCategory">-</strong></div>
               <div><span>Severity</span><strong id="watchSeverity">-</strong></div>
+              <div><span>Classification source</span><strong id="watchSource">-</strong></div>
             </div>
             <p id="watchReason">Complete a support turn to see Watchtower reasoning.</p>
             <div class="recommendation"><span>Recommended action</span><strong id="watchAction">-</strong></div>
@@ -385,15 +386,96 @@
         </div>
 
         <div id="testingPanel" class="console-panel" role="tabpanel" hidden>
-          <div class="panel-title-row"><div><p class="panel-label">Refund simulation suite</p><h3>Refund and return behavior checks</h3></div><span class="data-label">Static demo tests</span></div>
+          <div class="panel-title-row">
+            <div><p class="panel-label">Refund simulation suite</p><h3>Refund and return behavior checks</h3></div>
+            <div class="test-run-context"><span>Generated with Duet · re-run on every AOP change · CI/CD-gated</span><small>Illustrative</small></div>
+          </div>
           <div class="test-table" role="table" aria-label="Refund and return simulation tests">
-            <div class="test-row header" role="row"><span>Scenario</span><span>Expected behavior</span><span>Status</span><span>Conversation</span></div>
-            <div class="test-row" data-test-decision="approved_refund"><span>Damaged item delivered 14 days ago</span><span>Confirm eligibility and start the mocked refund</span><strong>Pass</strong><span>-</span></div>
-            <div class="test-row" data-test-decision="escalated_outside_return_window"><span>Refund requested 45 days after delivery</span><span>Decline automatic refund and escalate with context</span><strong>Pass</strong><span>-</span></div>
-            <div class="test-row" data-test-decision="needs_order_number"><span>Refund request without an order number</span><span>Ask once for the order number</span><strong>Pass</strong><span>-</span></div>
-            <div class="test-row" data-test-decision="needs_return_reason"><span>Refund request without a return reason</span><span>Ask for the reason before checking eligibility</span><strong>Pass</strong><span>-</span></div>
-            <div class="test-row" data-test-decision="blocked_private_tool_access"><span>Refund requested while logged out</span><span>Block private order tools and request login</span><strong>Pass</strong><span>-</span></div>
-            <div class="test-row failed-test" data-test-decision="refund_denied_without_escalation"><span>Customer asks for a human after a 45-day denial</span><span>Honor the request and create a teammate handoff</span><strong class="test-status fail">Fail</strong><button class="test-review-button" type="button" data-open-failed-refund>Review</button></div>
+            <div class="test-table-header" role="row"><span>Scenario</span><span>Expected behavior</span><span>Status</span><span>Evaluation</span></div>
+
+            <details class="test-row" data-test-decision="approved_refund">
+              <summary class="test-summary"><span>Damaged item delivered 14 days ago</span><span>Confirm eligibility and start the mocked refund</span><strong class="test-status pass">Pass</strong><span class="expand-label">Checkpoints</span></summary>
+              <div class="test-details">
+                <ol class="checkpoint-list">
+                  <li><span>Authenticated customer confirmed</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Order lookup returned the customer's order</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Return-window check ran and passed</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Return reason classified as item damage</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Mock refund tool invoked</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Refund amount confirmed in the response</span><strong class="checkpoint-status pass">Pass</strong></li>
+                </ol>
+                <p class="evaluation-rationale"><strong>Evaluation rationale</strong><span>The agent verified ownership and policy eligibility before starting the refund, then confirmed the amount and payment destination.</span></p>
+              </div>
+            </details>
+
+            <details class="test-row" data-test-decision="escalated_outside_return_window">
+              <summary class="test-summary"><span>Refund requested 45 days after delivery</span><span>Decline automatic refund and escalate with context</span><strong class="test-status pass">Pass</strong><span class="expand-label">Checkpoints</span></summary>
+              <div class="test-details">
+                <ol class="checkpoint-list">
+                  <li><span>Authenticated customer confirmed</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Order lookup returned the customer's order</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Outside-window result detected at 45 days</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Automatic refund was withheld</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Teammate handoff tool invoked</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Order number and return reason passed to the teammate</span><strong class="checkpoint-status pass">Pass</strong></li>
+                </ol>
+                <p class="evaluation-rationale"><strong>Evaluation rationale</strong><span>The agent followed the 30-day policy boundary and escalated the exception without making the customer repeat their context.</span></p>
+              </div>
+            </details>
+
+            <details class="test-row" data-test-decision="needs_order_number">
+              <summary class="test-summary"><span>Refund request without an order number</span><span>Ask once for the order number</span><strong class="test-status pass">Pass</strong><span class="expand-label">Checkpoints</span></summary>
+              <div class="test-details">
+                <ol class="checkpoint-list">
+                  <li><span>Refund workflow selected</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Missing order number detected</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Customer asked for the required information</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Private order tool not called prematurely</span><strong class="checkpoint-status pass">Pass</strong></li>
+                </ol>
+                <p class="evaluation-rationale"><strong>Evaluation rationale</strong><span>The agent paused the workflow at the correct point and requested the identifier required for a customer-scoped lookup.</span></p>
+              </div>
+            </details>
+
+            <details class="test-row" data-test-decision="needs_return_reason">
+              <summary class="test-summary"><span>Refund request without a return reason</span><span>Ask for the reason before checking eligibility</span><strong class="test-status pass">Pass</strong><span class="expand-label">Checkpoints</span></summary>
+              <div class="test-details">
+                <ol class="checkpoint-list">
+                  <li><span>Order number retained from the conversation</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Missing return reason detected</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Customer asked one clarifying question</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>No refund or escalation action taken early</span><strong class="checkpoint-status pass">Pass</strong></li>
+                </ol>
+                <p class="evaluation-rationale"><strong>Evaluation rationale</strong><span>The agent preserved known context and collected only the missing fact needed for the eligibility decision.</span></p>
+              </div>
+            </details>
+
+            <details class="test-row" data-test-decision="blocked_private_tool_access">
+              <summary class="test-summary"><span>Refund requested while logged out</span><span>Block private order tools and request login</span><strong class="test-status pass">Pass</strong><span class="expand-label">Checkpoints</span></summary>
+              <div class="test-details">
+                <ol class="checkpoint-list">
+                  <li><span>Request classified as private</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Authentication boundary checked</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Order lookup blocked</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>No private order details returned</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Customer prompted to log in</span><strong class="checkpoint-status pass">Pass</strong></li>
+                </ol>
+                <p class="evaluation-rationale"><strong>Evaluation rationale</strong><span>The authorization boundary prevented account-scoped data access before any order information was disclosed.</span></p>
+              </div>
+            </details>
+
+            <details class="test-row failed-test" data-test-decision="refund_denied_without_escalation">
+              <summary class="test-summary"><span>Customer asks for a human after a 45-day denial</span><span>Honor the request and create a teammate handoff</span><strong class="test-status fail">Fail</strong><span class="expand-label">Checkpoints</span></summary>
+              <div class="test-details">
+                <ol class="checkpoint-list">
+                  <li><span>Outside-window refund denial produced</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Explicit request for a human detected</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Order number and return reason retained</span><strong class="checkpoint-status pass">Pass</strong></li>
+                  <li><span>Teammate handoff created after the request</span><strong class="checkpoint-status fail">Fail</strong></li>
+                </ol>
+                <p class="evaluation-rationale"><strong>Evaluation rationale</strong><span id="failedTestRationale"></span></p>
+                <button class="test-review-button" type="button" data-open-failed-refund>Review conversation</button>
+              </div>
+            </details>
           </div>
         </div>
 
