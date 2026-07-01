@@ -28,7 +28,7 @@
         </div>
 
         <div class="console-tabs" role="tablist" aria-label="Operations console views">
-          <button class="console-tab active" type="button" role="tab" aria-selected="true" data-panel="homePanel">Home</button>
+          <button class="console-tab active" type="button" role="tab" aria-selected="true" data-panel="homePanel">Overview</button>
           <button class="console-tab" type="button" role="tab" aria-selected="false" data-panel="insightsPanel">Insights</button>
           <button class="console-tab" type="button" role="tab" aria-selected="false" data-panel="buildPanel">Build / AOP</button>
           <button class="console-tab" type="button" role="tab" aria-selected="false" data-panel="conversationsPanel">Conversations</button>
@@ -37,28 +37,99 @@
           <button class="console-tab" type="button" role="tab" aria-selected="false" data-panel="previewPanel">Preview</button>
         </div>
 
-        <div id="homePanel" class="console-panel active" role="tabpanel">
-          <div class="panel-title-row">
-            <div><p class="panel-label">Overview</p><h3>Illustrative Bookly deployment metrics</h3></div>
-            <span class="data-label">Simulated data</span>
+        <div id="homePanel" class="console-panel overview-panel active" role="tabpanel">
+          <div class="overview-heading">
+            <div>
+              <p class="panel-label">Bookly support analytics</p>
+              <h3>Overview</h3>
+            </div>
+            <div class="overview-period">
+              <strong>Showing the last 30 days</strong>
+              <span class="data-label">Simulated data</span>
+            </div>
           </div>
-          <div class="metric-grid">
-            <div class="metric"><span>Conversations analyzed</span><strong>1,248</strong><small>simulated</small></div>
-            <div class="metric"><span>AI resolution rate</span><strong>74%</strong><small>simulated</small></div>
-            <div class="metric"><span>Human handoff rate</span><strong>18%</strong><small>simulated</small></div>
-            <div class="metric"><span>Watchtower flagged rate</span><strong>8%</strong><small>simulated</small></div>
-            <div class="metric"><span>CSAT estimate</span><strong>4.6 / 5</strong><small>simulated</small></div>
+
+          <div class="overview-metrics" aria-label="Illustrative Bookly deployment metrics">
+            <article class="overview-metric">
+              <strong>1,248</strong>
+              <span>Conversations in last 30 days</span>
+              <small>simulated</small>
+            </article>
+            <article class="overview-metric">
+              <strong>74%</strong>
+              <span>AI resolution rate</span>
+              <small>simulated</small>
+            </article>
+            <article class="overview-metric">
+              <strong>3.8</strong>
+              <span>User messages per conversation</span>
+              <small>simulated</small>
+            </article>
           </div>
-          <div class="console-section">
-            <h4>Most referenced knowledge</h4>
-            <div class="tag-row"><span>Returns Policy</span><span>Refund Policy</span><span>Shipping Policy</span></div>
-          </div>
-          <div class="latest-grid" aria-label="Latest conversation summary">
-            <div><span>Latest workflow</span><strong id="homeWorkflow">No conversation yet</strong></div>
-            <div><span>Latest decision</span><strong id="homeDecision">-</strong></div>
-            <div><span>Latest risk</span><strong id="homeRisk">-</strong></div>
-            <div><span>Latest outcome</span><strong id="homeOutcome">-</strong></div>
-          </div>
+
+          <section class="overview-chart-card" aria-labelledby="dailyConversationsTitle">
+            <div class="overview-chart-heading">
+              <div>
+                <h4 id="dailyConversationsTitle">Daily Conversations</h4>
+                <p>About 42 conversations per day</p>
+              </div>
+              <div class="chart-legend" aria-label="Chart legend">
+                <span><i class="legend-swatch resolved" aria-hidden="true"></i>AI resolved</span>
+                <span><i class="legend-swatch handed-off" aria-hidden="true"></i>Teammate handoff</span>
+              </div>
+            </div>
+
+            <svg class="overview-chart" viewBox="0 0 900 280" role="img" aria-label="Simulated daily conversations for the last 30 days, split between AI-resolved conversations and teammate handoffs">
+              <defs>
+                <linearGradient id="resolvedArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#5b67d8" stop-opacity="0.8" />
+                  <stop offset="100%" stop-color="#5b67d8" stop-opacity="0.18" />
+                </linearGradient>
+                <linearGradient id="handoffArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#e87955" stop-opacity="0.76" />
+                  <stop offset="100%" stop-color="#e87955" stop-opacity="0.12" />
+                </linearGradient>
+              </defs>
+
+              <g class="chart-grid" aria-hidden="true">
+                <line x1="52" y1="30" x2="876" y2="30" />
+                <line x1="52" y1="90" x2="876" y2="90" />
+                <line x1="52" y1="150" x2="876" y2="150" />
+                <line x1="52" y1="210" x2="876" y2="210" />
+                <line x1="52" y1="250" x2="876" y2="250" />
+              </g>
+              <g class="chart-axis-labels" aria-hidden="true">
+                <text x="18" y="34">60</text>
+                <text x="18" y="94">45</text>
+                <text x="18" y="154">30</text>
+                <text x="18" y="214">15</text>
+                <text x="45" y="272">Jun 1</text>
+                <text x="290" y="272">Jun 10</text>
+                <text x="545" y="272">Jun 20</text>
+                <text x="834" y="272">Jun 30</text>
+              </g>
+
+              <path class="chart-area handoff-area" d="M52 118 L80 126 L108 137 L136 144 L164 140 L192 132 L220 142 L248 127 L276 132 L304 118 L332 125 L360 112 L388 98 L416 108 L444 91 L472 99 L500 82 L528 75 L556 87 L584 70 L612 79 L640 63 L668 72 L696 58 L724 70 L752 54 L780 68 L808 57 L836 72 L864 61 L876 250 L52 250 Z" />
+              <path class="chart-area resolved-area" d="M52 168 L80 174 L108 179 L136 182 L164 175 L192 170 L220 183 L248 166 L276 172 L304 160 L332 168 L360 151 L388 142 L416 153 L444 132 L472 141 L500 119 L528 112 L556 129 L584 104 L612 117 L640 94 L668 110 L696 88 L724 105 L752 80 L780 99 L808 84 L836 106 L864 91 L876 250 L52 250 Z" />
+              <path class="chart-line handoff-line" d="M52 118 L80 126 L108 137 L136 144 L164 140 L192 132 L220 142 L248 127 L276 132 L304 118 L332 125 L360 112 L388 98 L416 108 L444 91 L472 99 L500 82 L528 75 L556 87 L584 70 L612 79 L640 63 L668 72 L696 58 L724 70 L752 54 L780 68 L808 57 L836 72 L864 61" />
+              <path class="chart-line resolved-line" d="M52 168 L80 174 L108 179 L136 182 L164 175 L192 170 L220 183 L248 166 L276 172 L304 160 L332 168 L360 151 L388 142 L416 153 L444 132 L472 141 L500 119 L528 112 L556 129 L584 104 L612 117 L640 94 L668 110 L696 88 L724 105 L752 80 L780 99 L808 84 L836 106 L864 91" />
+            </svg>
+          </section>
+
+          <section class="overview-latest" aria-labelledby="latestConversationTitle">
+            <div class="panel-title-row">
+              <div>
+                <p class="panel-label">Live demo activity</p>
+                <h4 id="latestConversationTitle">Latest conversation</h4>
+              </div>
+            </div>
+            <div class="latest-grid" aria-label="Latest conversation summary">
+              <div><span>Latest workflow</span><strong id="homeWorkflow">No conversation yet</strong></div>
+              <div><span>Latest decision</span><strong id="homeDecision">-</strong></div>
+              <div><span>Latest risk</span><strong id="homeRisk">-</strong></div>
+              <div><span>Latest outcome</span><strong id="homeOutcome">-</strong></div>
+            </div>
+          </section>
         </div>
 
         <div id="insightsPanel" class="console-panel" role="tabpanel" hidden>
@@ -229,6 +300,11 @@
                   <strong id="conversationLatestTitle">No live conversation yet</strong>
                   <small id="conversationLatestTime">Latest agent turn</small>
                 </button>
+                <button id="failedRefundConversationRow" class="conversation-row" type="button" data-conversation-search="refund qa failed outside window escalation">
+                  <span class="conversation-tag failed">QA failed</span>
+                  <strong>Escalation request was missed</strong>
+                  <small>Refund evaluation - simulated</small>
+                </button>
                 <div class="conversation-row" data-conversation-search="shipping policy answered"><span class="conversation-tag">Shipping</span><strong>Shipping timing question</strong><small>12m ago - simulated</small></div>
                 <div class="conversation-row" data-conversation-search="order status resolved"><span class="conversation-tag">Order status</span><strong>Tracking update request</strong><small>38m ago - simulated</small></div>
                 <div class="conversation-row" data-conversation-search="refund escalation outside window"><span class="conversation-tag warning">Escalated</span><strong>Return policy exception</strong><small>1h ago - simulated</small></div>
@@ -263,8 +339,8 @@
               <section class="conversation-overview-section review-qa">
                 <h4>Review + QA</h4>
                 <button type="button" disabled>Assign to teammate</button>
-                <label><span>Issue status</span><select><option>Unassigned</option><option>In review</option><option>Resolved</option></select></label>
-                <label><span>Resolution quality</span><select><option>Not reviewed</option><option>Correct</option><option>Needs improvement</option></select></label>
+                <label><span>Issue status</span><select id="conversationIssueStatus"><option>Unassigned</option><option>In review</option><option>Resolved</option></select></label>
+                <label><span>Resolution quality</span><select id="conversationQuality"><option>Not reviewed</option><option>Correct</option><option>Needs improvement</option></select></label>
                 <label class="qa-check"><input type="checkbox" /> Trust and safety related</label>
               </section>
             </aside>
@@ -309,15 +385,15 @@
         </div>
 
         <div id="testingPanel" class="console-panel" role="tabpanel" hidden>
-          <div class="panel-title-row"><div><p class="panel-label">Simulation suite</p><h3>Behavior checks</h3></div><span class="data-label">Static demo tests</span></div>
-          <div class="test-table" role="table" aria-label="Agent simulation tests">
-            <div class="test-row header" role="row"><span>Scenario</span><span>Expected</span><span>Status</span></div>
-            <div class="test-row" data-test-decision="approved_refund"><span>Eligible damaged item</span><span>Approve mocked refund</span><strong>Pass</strong></div>
-            <div class="test-row" data-test-decision="escalated_outside_return_window"><span>Outside return window</span><span>Escalate</span><strong>Pass</strong></div>
-            <div class="test-row" data-test-decision="needs_order_number"><span>Missing order number</span><span>Ask for order number</span><strong>Pass</strong></div>
-            <div class="test-row" data-test-decision="blocked_private_tool_access"><span>No login</span><span>Block private tool access</span><strong>Pass</strong></div>
-            <div class="test-row" data-test-decision="policy_answered"><span>Shipping policy question</span><span>Answer from policy</span><strong>Pass</strong></div>
-            <div class="test-row" data-test-decision="clarification_requested"><span>Ambiguous customer message</span><span>Triage / clarify</span><strong>Pass</strong></div>
+          <div class="panel-title-row"><div><p class="panel-label">Refund simulation suite</p><h3>Refund and return behavior checks</h3></div><span class="data-label">Static demo tests</span></div>
+          <div class="test-table" role="table" aria-label="Refund and return simulation tests">
+            <div class="test-row header" role="row"><span>Scenario</span><span>Expected behavior</span><span>Status</span><span>Conversation</span></div>
+            <div class="test-row" data-test-decision="approved_refund"><span>Damaged item delivered 14 days ago</span><span>Confirm eligibility and start the mocked refund</span><strong>Pass</strong><span>-</span></div>
+            <div class="test-row" data-test-decision="escalated_outside_return_window"><span>Refund requested 45 days after delivery</span><span>Decline automatic refund and escalate with context</span><strong>Pass</strong><span>-</span></div>
+            <div class="test-row" data-test-decision="needs_order_number"><span>Refund request without an order number</span><span>Ask once for the order number</span><strong>Pass</strong><span>-</span></div>
+            <div class="test-row" data-test-decision="needs_return_reason"><span>Refund request without a return reason</span><span>Ask for the reason before checking eligibility</span><strong>Pass</strong><span>-</span></div>
+            <div class="test-row" data-test-decision="blocked_private_tool_access"><span>Refund requested while logged out</span><span>Block private order tools and request login</span><strong>Pass</strong><span>-</span></div>
+            <div class="test-row failed-test" data-test-decision="refund_denied_without_escalation"><span>Customer asks for a human after a 45-day denial</span><span>Honor the request and create a teammate handoff</span><strong class="test-status fail">Fail</strong><button class="test-review-button" type="button" data-open-failed-refund>Review</button></div>
           </div>
         </div>
 

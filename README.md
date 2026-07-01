@@ -49,7 +49,7 @@ For the strongest demo sequence:
 4. Run the outside-window test with `user1`.
 5. Open **Watchtower** to show why teammate review is required.
 
-## Four Recommended Tests
+## Four Recommended Refund Tests
 
 ### 1. Approved Refund
 
@@ -71,7 +71,17 @@ I want to return order BK-20045 because the cover arrived damaged.
 
 Expected: the 45-day-old order is escalated. The trace shows `@escalation.create_mock`, and Watchtower flags **Refund Policy Exceptions > Outside return window**.
 
-### 3. Private Access Without Login
+### 3. Multi-Turn Refund Clarification
+
+Log in with `user1 / password123`, then send:
+
+```text
+I want to return a damaged book.
+```
+
+Expected: the agent asks for the missing order number before checking eligibility. Reply with `BK-10293` to continue the same refund request.
+
+### 4. Private Access Without Login
 
 Reload the page without logging in, then send:
 
@@ -81,17 +91,9 @@ I want to return order BK-77510 because the cover arrived damaged.
 
 Expected: the agent asks the customer to log in. The trace shows **Blocked Private Tool Access**, and no private order details are returned.
 
-### 4. Shipping Policy
+### Inspecting a Failed QA Test
 
-No login is needed. Send:
-
-```text
-How long does shipping usually take?
-```
-
-Expected: the agent gives the grounded 3-5 day standard and 1-2 day express shipping answer. The trace shows `@policy.retrieve` and **Shipping Policy Answer**.
-
-For the multi-turn order status flow, log in as `user1`, ask `Where is my order?`, and then provide `BK-10293` when the agent asks for the missing order number.
+Open **Testing** in the Operations Console. The failed test shows a customer asking for a human after an outside-window refund denial. Select **Review** to open its simulated transcript in **Conversations**, where the missed escalation and **Needs improvement** QA result are visible.
 
 
 ## How It Works

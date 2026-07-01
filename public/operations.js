@@ -1,4 +1,26 @@
 const TRACE_STORAGE_KEY = "booklyLatestTrace";
+let latestLiveTrace = null;
+
+// This simulated trace gives the failed test a conversation that can be reviewed.
+const FAILED_REFUND_TEST_TRACE = {
+  authenticated: true,
+  username: "user1",
+  intent: "refund_return",
+  workflow: "Refund / Return Resolution",
+  workflowVersion: "v1.4",
+  decision: "refund_denied_without_escalation",
+  summary: "The customer requested a human after an outside-window refund denial, but the agent repeated the policy response.",
+  resolution: "Failed evaluation: the agent should have created a teammate handoff and passed along the order number and return reason.",
+  tags: ["refund", "outside_return_window", "escalation_missed", "qa_failed"],
+  evaluationStatus: "failed",
+  watchtower: { risk: "high" },
+  transcript: [
+    { role: "user", content: "I need a refund for order BK-20045. The book arrived with a crushed spine." },
+    { role: "assistant", content: "Order BK-20045 was delivered 45 days ago, so it is outside Bookly's 30-day return window and I cannot issue an automatic refund." },
+    { role: "user", content: "Please escalate this to a person who can review it." },
+    { role: "assistant", content: "Order BK-20045 was delivered 45 days ago and is outside the 30-day return window." }
+  ]
+};
 
 function readable(value) {
   if (!value) {
@@ -18,6 +40,7 @@ function setPill(element, text, tone) {
 }
 
 function renderOperationsConsole(trace) {
+  latestLiveTrace = trace;
   renderHome(trace);
   renderInsights(trace);
   renderBuildAop(trace);
@@ -66,7 +89,7 @@ function renderBuildAop(trace) {
   setText("buildSuggestedGap", trace.suggestedKnowledgeGap || "No knowledge gap suggested.");
 }
 
-function renderConversations(trace) {
+function renderConversations(trace, selectedRowId = "latestConversationRow") {
   const person = trace.authenticated ? trace.username : "Anonymous customer";
   setText("conversationPerson", person);
   setText("conversationSummary", trace.summary);
@@ -74,9 +97,19 @@ function renderConversations(trace) {
   setText("conversationWorkflow", `${trace.workflow} ${trace.workflowVersion}`);
   setText("conversationDecision", readable(trace.decision));
   setText("conversationRisk", readable(trace.watchtower.risk));
-  setText("conversationLatestTag", readable(trace.intent));
-  setText("conversationLatestTitle", trace.summary);
-  setText("conversationLatestTime", "Updated just now");
+  if (selectedRowId === "latestConversationRow") {
+    setText("conversationLatestTag", readable(trace.intent));
+    setText("conversationLatestTitle", trace.summary);
+    setText("conversationLatestTime", "Updated just now");
+  }
+
+  document.querySelectorAll(".conversation-row").forEach((row) => {
+    row.classList.toggle("active", row.id === selectedRowId);
+  });
+
+  const failedEvaluation = trace.evaluationStatus === "failed";
+  document.querySelector("#conversationIssueStatus").value = failedEvaluation ? "In review" : "Unassigned";
+  document.querySelector("#conversationQuality").value = failedEvaluation ? "Needs improvement" : "Not reviewed";
 
   const authPill = document.querySelector("#conversationAuth");
   setPill(authPill, trace.authenticated ? "Authenticated" : "Not authenticated", trace.authenticated ? "success" : "warning");
@@ -132,20 +165,37 @@ function renderTesting(trace) {
   });
 }
 
+function selectConsolePanel(panelId) {
+  document.querySelectorAll(".console-tab").forEach((tab) => {
+    const isSelected = tab.dataset.panel === panelId;
+    tab.classList.toggle("active", isSelected);
+    tab.setAttribute("aria-selected", String(isSelected));
+  });
+
+  document.querySelectorAll(".console-panel").forEach((panel) => {
+    const isSelected = panel.id === panelId;
+    panel.hidden = !isSelected;
+    panel.classList.toggle("active", isSelected);
+  });
+}
+
+function openFailedRefundConversation() {
+  renderConversations(FAILED_REFUND_TEST_TRACE, "failedRefundConversationRow");
+  selectConsolePanel("conversationsPanel");
+}
+
 document.querySelectorAll(".console-tab").forEach((tab) => {
   tab.addEventListener("click", () => {
-    document.querySelectorAll(".console-tab").forEach((otherTab) => {
-      const isSelected = otherTab === tab;
-      otherTab.classList.toggle("active", isSelected);
-      otherTab.setAttribute("aria-selected", String(isSelected));
-    });
-
-    document.querySelectorAll(".console-panel").forEach((panel) => {
-      const isSelected = panel.id === tab.dataset.panel;
-      panel.hidden = !isSelected;
-      panel.classList.toggle("active", isSelected);
-    });
+    selectConsolePanel(tab.dataset.panel);
   });
+});
+
+document.querySelector("#failedRefundConversationRow").addEventListener("click", openFailedRefundConversation);
+document.querySelector("[data-open-failed-refund]").addEventListener("click", openFailedRefundConversation);
+document.querySelector("#latestConversationRow").addEventListener("click", () => {
+  if (latestLiveTrace) {
+    renderConversations(latestLiveTrace);
+  }
 });
 
 document.querySelectorAll(".build-subtab").forEach((tab) => {
