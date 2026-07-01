@@ -31,16 +31,23 @@ Some support flows require login because they use private order information. Gen
 
 ## Decagon-Inspired Operations Console
 
-The page includes a clearly labeled `Decagon-inspired CX Operations Console`. It is a mock operations layer, not Decagon's real interface, tools, or APIs.
+The operations console has its own page:
 
-After each agent turn, the backend sends one shared `trace` object to the browser. The console uses that trace to update the latest workflow, decision, tool calls, audit log, outcome, and Watchtower reasoning.
+```text
+https://support-bookly.onrender.com/operations.html
+```
+
+It is clearly labeled `Decagon-inspired CX Operations Console`. It is a mock operations layer, not Decagon's real interface, tools, or APIs.
+
+After each agent turn, the backend sends one shared `trace` object to the browser. The customer page saves the latest trace in browser storage, and the operations page reads it to update the workflow, decision, tool calls, audit log, outcome, and Watchtower reasoning. If both pages are open, the console updates automatically.
 
 For the strongest demo sequence:
 
-1. Run the approved refund test with `user2`.
-2. Open **Conversation Trace** to explain the AOP, policy checks, and mocked refund action.
-3. Run the outside-window test with `user1`.
-4. Open **Watchtower** to show why teammate review is required.
+1. Open the Operations Console link in a separate tab.
+2. Run the approved refund test with `user2` on the customer support page.
+3. Open **Conversation Trace** to explain the AOP, policy checks, and mocked refund action.
+4. Run the outside-window test with `user1`.
+5. Open **Watchtower** to show why teammate review is required.
 
 ## Four Recommended Tests
 
@@ -89,8 +96,10 @@ For the multi-turn order status flow, log in as `user1`, ask `Where is my order?
 
 ## How It Works
 
-- `public/index.html` contains the page layout.
-- `public/app.js` handles login, streaming chat, the current support topic, and trace-driven console updates.
+- `public/index.html` contains the customer support page.
+- `public/app.js` handles login, streaming chat, the current support topic, and saving the latest trace.
+- `public/operations.html` contains the standalone operations console.
+- `public/operations.js` reads saved traces and updates the console.
 - `server.py` runs the Python server and orchestration layer.
 - `orders.json` stores mocked order data grouped by demo user.
 - `policies.md` stores the shipping, return, and refund policy text.
