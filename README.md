@@ -1,6 +1,6 @@
 # Bookly
 
-Bookly is a small customer support website for an online bookstore. It has a simple login, a chat support agent, mocked order tools, and a lightweight Python orchestration layer.
+Bookly is a customer support demo for an online bookstore. It includes a simple login, a streaming chat agent, mocked support tools, and a lightweight Python orchestration layer.
 
 ## Live Demo
 
@@ -27,74 +27,70 @@ Some support flows require login because they use private order information. Gen
 - Answer shipping, return, and refund policy questions
 - Ask for missing details before taking action
 - Stream the answer into the chat as it is generated
+- Emit a shared trace that explains the workflow, tools, knowledge, and decision used
 
-## Test Cases
+## Decagon-Inspired Operations Console
 
-Use `user1 / password123` for these examples.
+The page includes a clearly labeled `Decagon-inspired CX Operations Console`. It is a mock operations layer, not Decagon's real interface, tools, or APIs.
 
-### 1. Order Status
+After each agent turn, the backend sends one shared `trace` object to the browser. The console uses that trace to update the latest workflow, decision, tool calls, audit log, outcome, and Watchtower reasoning.
 
-Message:
+For the strongest demo sequence:
 
-```text
-Hi, can you tell me where my order is?
-```
+1. Run the approved refund test with `user2`.
+2. Open **Conversation Trace** to explain the AOP, policy checks, and mocked refund action.
+3. Run the outside-window test with `user1`.
+4. Open **Watchtower** to show why teammate review is required.
 
-The agent should ask for the order number.
+## Four Recommended Tests
 
-Then send:
+### 1. Approved Refund
 
-```text
-BK-10293
-```
-
-Expected result: the agent uses the mocked order lookup tool and says the order is out for delivery today.
-
-### 2. Policy Question
-
-No login is needed for this one.
-
-Message:
+Log in with `user2 / password456`, then send:
 
 ```text
-How long does shipping usually take?
+I want to return order BK-77510 because the cover arrived damaged.
 ```
 
-Expected result: the agent answers from the policy document: standard shipping is 3-5 business days, and express shipping is 1-2 business days.
+Expected: a mocked `$29.00` refund is approved. Conversation Trace shows `@orders.lookup`, `@policy.check_return_window`, and `@refund.create_mock`. Watchtower shows **Not flagged** and **Low** risk.
 
-### 3. Refund Approval
+### 2. Outside-Window Escalation
 
-Message:
-
-```text
-I want to return a book.
-```
-
-The agent should ask for the order number and return reason.
-
-Then send:
-
-```text
-Order BK-10293, the cover arrived damaged.
-```
-
-Expected result: the agent checks return eligibility and approves the mocked refund because the order is inside the 30-day window.
-
-### 4. Refund Escalation
-
-Message:
+Log in with `user1 / password123`, then send:
 
 ```text
 I want to return order BK-20045 because the cover arrived damaged.
 ```
 
-Expected result: the agent sees that the order is outside the 30-day return window, escalates the case, and tells the customer to email `support@bookly.com`.
+Expected: the 45-day-old order is escalated. The trace shows `@escalation.create_mock`, and Watchtower flags **Refund Policy Exceptions > Outside return window**.
+
+### 3. Private Access Without Login
+
+Reload the page without logging in, then send:
+
+```text
+I want to return order BK-77510 because the cover arrived damaged.
+```
+
+Expected: the agent asks the customer to log in. The trace shows **Blocked Private Tool Access**, and no private order details are returned.
+
+### 4. Shipping Policy
+
+No login is needed. Send:
+
+```text
+How long does shipping usually take?
+```
+
+Expected: the agent gives the grounded 3-5 day standard and 1-2 day express shipping answer. The trace shows `@policy.retrieve` and **Shipping Policy Answer**.
+
+For the multi-turn order status flow, log in as `user1`, ask `Where is my order?`, and then provide `BK-10293` when the agent asks for the missing order number.
 
 
 ## How It Works
 
 - `public/index.html` contains the page layout.
-- `public/app.js` handles login, chat messages, streaming responses, and the current support topic.
+- `public/app.js` handles login, streaming chat, the current support topic, and trace-driven console updates.
 - `server.py` runs the Python server and orchestration layer.
 - `orders.json` stores mocked order data grouped by demo user.
 - `policies.md` stores the shipping, return, and refund policy text.
@@ -119,7 +115,7 @@ ANTHROPIC_API_KEY=your_anthropic_api_key_here
 ROUTER_MODEL=claude-haiku-4-5-20251001
 ```
 
-The server reads Render's `PORT` environment variable automatically.
+The server reads Render's `PORT` environment variable automatically. No external Python packages are required.
 
 ## Demo Auth Note
 

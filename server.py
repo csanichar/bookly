@@ -15,6 +15,7 @@ POLICY_FILE = BASE_DIR / "policies.md"
 ORDERS_FILE = BASE_DIR / "orders.json"
 
 DEFAULT_ROUTER_MODEL = "claude-haiku-4-5-20251001"
+DEFAULT_LOCAL_PORT = "3000"
 SUPPORT_EMAIL = "support@bookly.com"
 DEMO_USERS = {
     "user1": "password123",
@@ -336,6 +337,254 @@ def escalation_message(order_number, reason):
     )
 
 
+def workflow_name_for_intent(intent):
+    """Give each route a friendly operations workflow name."""
+    names = {
+        "refund_return": "Refund / Return Resolution",
+        "order_status": "Order Status Lookup",
+        "policy": "Shipping Policy Answer",
+        "human_escalation": "Escalation Request",
+        "general": "General Support Triage",
+    }
+    return names.get(intent, "General Support Triage")
+
+
+def decision_detail(decision):
+    """Explain a trace decision in one short sentence."""
+    details = {
+        "approved_refund": "Eligible for automatic mocked refund.",
+        "escalated_outside_return_window": "Outside the return window; teammate review required.",
+        "escalated_unclear_reason": "Return reason needs teammate review.",
+        "escalated_customer_request": "Customer requested a teammate.",
+        "order_status_found": "Order status returned from the session-scoped order lookup.",
+        "order_not_found": "No matching order was found for the authenticated customer.",
+        "needs_order_number": "Asked the customer for the missing order number.",
+        "needs_return_reason": "Asked the customer for the missing return reason.",
+        "policy_answered": "Answered using the Bookly policy document.",
+        "blocked_private_tool_access": "Private tool access blocked because login is required.",
+        "clarification_requested": "Asked the customer to choose a supported help topic.",
+    }
+    return details.get(decision, "Support response produced.")
+
+
+def knowledge_for_trace(intent, answer):
+    """Return only the policy snippets that mattered for this turn."""
+    decision = answer.get("decision", "")
+
+    if decision == "approved_refund":
+        return [
+            {"title": "Returns Policy", "snippet": "Books can be returned within 30 days of delivery."},
+            {"title": "Refund Policy", "snippet": "Damaged items qualify for a refund to the original payment method."},
+        ]
+
+    if decision == "escalated_outside_return_window":
+        return [
+            {
+                "title": "Returns Policy",
+                "snippet": "Orders outside the 30-day return window need teammate review.",
+            }
+        ]
+
+    if intent == "policy":
+        topic = answer.get("policy_topic", "policy")
+        snippets = {
+            "shipping": "Standard shipping is 3-5 business days, and express shipping is 1-2 business days.",
+            "returns": "Books can be returned within 30 days of delivery.",
+            "refunds": "Most refunds take 3-7 business days after approval.",
+        }
+        return [{"title": f"{topic.title()} Policy", "snippet": snippets.get(topic, "Bookly policy was checked for this question.")}]
+
+    return []
+
+
+def build_watchtower(trace):
+    """Explain whether the latest turn needs human review."""
+    decision = trace["decision"]
+
+    if decision == "approved_refund":
+        return {
+            "matched": False,
+            "risk": "low",
+            "matchedWatchtower": "",
+            "category": "",
+            "severity": "low",
+            "flagReason": (
+                "No Watchtower criteria matched. The customer was authenticated, the order was "
+                "found under the authenticated session, the delivery date was inside the 30-day "
+                "return window, and the damaged-item reason qualified for automatic refund."
+            ),
+            "recommendedAction": "No teammate review required.",
+            "jobs": [],
+        }
+
+    if decision == "escalated_outside_return_window":
+        return {
+            "matched": True,
+            "risk": "medium",
+            "matchedWatchtower": "Refund Policy Exceptions",
+            "category": "Outside return window",
+            "severity": "medium",
+            "flagReason": (
+                "The customer requested a refund for an order delivered more than 30 days ago. "
+                "Bookly policy allows automatic returns within 30 days, so the Refund / Return "
+                "Resolution AOP correctly escalated the case for teammate review."
+            ),
+            "recommendedAction": "Teammate review required. Confirm whether a policy exception should be granted.",
+            "jobs": ["Refund Policy Exceptions"],
+        }
+
+    if decision in ["order_not_found", "needs_return_reason", "escalated_unclear_reason"]:
+        category = "Missing order data" if decision == "order_not_found" else "Unclear refund reason"
+        return {
+            "matched": True,
+            "risk": "medium",
+            "matchedWatchtower": "Refund Policy Exceptions",
+            "category": category,
+            "severity": "medium",
+            "flagReason": decision_detail(decision),
+            "recommendedAction": "Review the conversation if the customer cannot provide the missing information.",
+            "jobs": ["Refund Policy Exceptions"],
+        }
+
+    if decision == "escalated_customer_request":
+        return {
+            "matched": True,
+            "risk": "medium",
+            "matchedWatchtower": "Negative Sentiment",
+            "category": "Escalation requested",
+            "severity": "medium",
+            "flagReason": "The customer asked to speak with a human teammate.",
+            "recommendedAction": "A teammate should follow up using the supplied conversation context.",
+            "jobs": ["Negative Sentiment"],
+        }
+
+    return {
+        "matched": False,
+        "risk": "low",
+        "matchedWatchtower": "",
+        "category": "",
+        "severity": "low",
+        "flagReason": "No Watchtower criteria matched for the latest conversation turn.",
+        "recommendedAction": "No teammate review required.",
+        "jobs": [],
+    }
+
+
+def build_trace(route, answer, user, messages):
+    """Build the shared explanation object used by the operations console."""
+    intent = route.get("intent", "general")
+    workflow = workflow_name_for_intent(intent)
+    decision = answer.get("decision", "response_produced")
+    order = answer.get("order") or {}
+    order_number = answer.get("order_number") or route.get("order_number", "")
+    reason = answer.get("reason") or route.get("reason", "")
+    escalated = bool(answer.get("escalated", False))
+    resolved = decision in ["approved_refund", "order_status_found", "policy_answered"]
+    tags = [intent]
+
+    if "damaged" in reason.lower() or "crushed" in reason.lower():
+        tags.append("damaged_item")
+    if resolved:
+        tags.append("resolved")
+    if escalated:
+        tags.append("escalated")
+
+    audit_log = [{"step": "AOP selected", "detail": f"{workflow} v1.0"}]
+
+    if order:
+        audit_log.append(
+            {
+                "step": "Metadata referenced",
+                "detail": f"{{{{order.delivered_days_ago}}}} = {order.get('delivered_days_ago', 'unknown')}",
+            }
+        )
+
+    for tool in answer.get("tools", []):
+        audit_log.append({"step": "Tool used", "detail": tool["name"]})
+
+    audit_log.append({"step": "Decision produced", "detail": decision_detail(decision)})
+
+    latest_text = latest_user_message(messages)
+    summaries = {
+        "refund_return": "Customer requested help with a return or refund.",
+        "order_status": "Customer requested an order status update.",
+        "policy": "Customer asked a Bookly policy question.",
+        "human_escalation": "Customer requested support from a teammate.",
+        "general": f"Customer asked: {latest_text[:120]}" if latest_text else "Customer sent a general support question.",
+    }
+
+    if intent == "refund_return" and reason:
+        summaries["refund_return"] = f"Customer requested return help. Reason: {reason}."
+    resolutions = {
+        "approved_refund": "Mock refund approved.",
+        "escalated_outside_return_window": "Escalated to teammate review.",
+        "escalated_unclear_reason": "Escalated to teammate review.",
+        "escalated_customer_request": "Escalated to teammate review.",
+        "order_status_found": "Order status provided.",
+        "order_not_found": "Order was not found for this account.",
+        "needs_order_number": "Waiting for order number.",
+        "needs_return_reason": "Waiting for return reason.",
+        "policy_answered": "Policy answer provided.",
+        "blocked_private_tool_access": "Private tool access blocked.",
+        "clarification_requested": "Clarification requested.",
+    }
+
+    trace = {
+        "conversationId": route.get("conversation_id", "conv_demo"),
+        "summary": summaries.get(intent, summaries["general"]),
+        "resolution": resolutions.get(decision, "Support response provided."),
+        "tags": tags,
+        "intent": intent,
+        "workflow": workflow,
+        "workflowVersion": "v1.0",
+        "channelScope": "Global",
+        "channels": ["chat", "email", "agent_assist", "voice"],
+        "authenticated": bool(user),
+        "username": user["username"] if user else "",
+        "orderNumber": order_number,
+        "returnReason": reason,
+        "decision": decision,
+        "relevantKnowledge": knowledge_for_trace(intent, answer),
+        "tools": answer.get("tools", []),
+        "auditLog": audit_log,
+        "aop": {
+            "purpose": (
+                "Use this AOP when a customer asks to return a book, request a refund, "
+                "report a damaged book, or report a wrong item."
+            ),
+            "metadataReferences": [
+                "{{user.authenticated}}",
+                "{{user.username}}",
+                "{{order.order_number}}",
+                "{{order.delivered_days_ago}}",
+                "{{return.reason}}",
+                "{{conversation.channel}}",
+            ],
+            "linkedAops": [
+                "Escalation Request AOP",
+                "Order Status Lookup AOP",
+                "Shipping Policy Answer AOP",
+                "Refund Timing Question AOP",
+            ],
+            "advancedSettings": {
+                "knowledgeTag": "returns_refunds",
+                "visibility": "All authenticated customers",
+                "forceAopSelection": False,
+            },
+        },
+        "outcome": {
+            "resolved": resolved,
+            "escalated": escalated,
+            "handoffReason": decision_detail(decision) if escalated else "",
+        },
+        "suggestedKnowledgeGap": (
+            "Customers may ask whether they can choose a replacement instead of a refund for damaged books."
+        ),
+    }
+    trace["watchtower"] = build_watchtower(trace)
+    return trace
+
+
 def answer_order_status(messages, user, route):
     """Flow 1: ask for an order number, then look up that user's order."""
     text = user_messages_text(messages)
@@ -345,6 +594,7 @@ def answer_order_status(messages, user, route):
         return {
             "reply": "Happy to help. What's your order number?",
             "status_message": "Checking required details...",
+            "decision": "needs_order_number",
         }
 
     order = orders_for_user(user).get(order_number)
@@ -353,11 +603,26 @@ def answer_order_status(messages, user, route):
         return {
             "reply": f"I could not find order {order_number} on your Bookly account.",
             "status_message": "Using order lookup tool...",
+            "decision": "order_not_found",
+            "order_number": order_number,
+            "tools": [{
+                "name": "@orders.lookup",
+                "status": "not_found",
+                "detail": f"No order {order_number} was found under the authenticated session.",
+            }],
         }
 
     return {
         "reply": f"Thanks. Order {order_number} {order['status']}. Anything else?",
         "status_message": "Using order lookup tool...",
+        "decision": "order_status_found",
+        "order_number": order_number,
+        "order": order,
+        "tools": [{
+            "name": "@orders.lookup",
+            "status": "success",
+            "detail": f"Found order {order_number} under the authenticated session.",
+        }],
     }
 
 
@@ -371,12 +636,16 @@ def answer_refund_request(messages, user, route):
         return {
             "reply": "I can help with that. What's the order number, and what's the reason for the return?",
             "status_message": "Checking required details...",
+            "decision": "needs_order_number",
+            "reason": reason,
         }
 
     if not reason:
         return {
             "reply": "Thanks. What's the reason for the return?",
             "status_message": "Checking required details...",
+            "decision": "needs_return_reason",
+            "order_number": order_number,
         }
 
     order = orders_for_user(user).get(order_number)
@@ -385,6 +654,14 @@ def answer_refund_request(messages, user, route):
         return {
             "reply": f"I could not find order {order_number} on your Bookly account.",
             "status_message": "Using order lookup tool...",
+            "decision": "order_not_found",
+            "order_number": order_number,
+            "reason": reason,
+            "tools": [{
+                "name": "@orders.lookup",
+                "status": "not_found",
+                "detail": f"No order {order_number} was found under the authenticated session.",
+            }],
         }
 
     if order["delivered_days_ago"] > 30:
@@ -396,6 +673,15 @@ def answer_refund_request(messages, user, route):
             ),
             "status_message": "Checking return eligibility...",
             "escalated": True,
+            "decision": "escalated_outside_return_window",
+            "order_number": order_number,
+            "reason": reason,
+            "order": order,
+            "tools": [
+                {"name": "@orders.lookup", "status": "success", "detail": f"Found order {order_number} under the authenticated session."},
+                {"name": "@policy.check_return_window", "status": "failed", "detail": f"Delivered {order['delivered_days_ago']} days ago; outside the 30-day return window."},
+                {"name": "@escalation.create_mock", "status": "mocked", "detail": f"Created a mocked teammate review handoff for {order_number}."},
+            ],
         }
 
     return_reason = reason.lower()
@@ -408,18 +694,45 @@ def answer_refund_request(messages, user, route):
                 "original payment. You'll get a confirmation email."
             ),
             "status_message": "Checking return eligibility...",
+            "decision": "approved_refund",
+            "order_number": order_number,
+            "reason": reason,
+            "order": order,
+            "tools": [
+                {"name": "@orders.lookup", "status": "success", "detail": f"Found order {order_number} under the authenticated session."},
+                {"name": "@policy.check_return_window", "status": "passed", "detail": f"Delivered {order['delivered_days_ago']} days ago; within the 30-day return window."},
+                {"name": "@refund.create_mock", "status": "mocked", "detail": f"Mocked refund amount: {order['refund_amount']}."},
+            ],
         }
 
     return {
         "reply": escalation_message(order_number, reason),
         "status_message": "Checking return eligibility...",
         "escalated": True,
+        "decision": "escalated_unclear_reason",
+        "order_number": order_number,
+        "reason": reason,
+        "order": order,
+        "tools": [
+            {"name": "@orders.lookup", "status": "success", "detail": f"Found order {order_number} under the authenticated session."},
+            {"name": "@policy.check_return_window", "status": "passed", "detail": f"Delivered {order['delivered_days_ago']} days ago; within the 30-day return window."},
+            {"name": "@escalation.create_mock", "status": "mocked", "detail": f"Created a mocked teammate review handoff for {order_number}."},
+        ],
     }
 
 
 def answer_policy_question(latest_text):
     """Flow 3: answer from local policy text, with Claude if available."""
     policy_text = POLICY_FILE.read_text(encoding="utf-8")
+    lower_text = latest_text.lower()
+    policy_topic = "policy"
+
+    if "shipping" in lower_text or "ship" in lower_text:
+        policy_topic = "shipping"
+    elif "return" in lower_text:
+        policy_topic = "returns"
+    elif "refund" in lower_text:
+        policy_topic = "refunds"
 
     system_prompt = (
         "Answer customer policy questions for Bookly using only the policy text. "
@@ -440,26 +753,40 @@ def answer_policy_question(latest_text):
         return {
             "reply": routed["answer"],
             "status_message": "Checking policy document...",
+            "decision": "policy_answered",
+            "policy_topic": policy_topic,
+            "tools": [{
+                "name": "@policy.retrieve",
+                "status": "success",
+                "detail": f"Retrieved Bookly {policy_topic} policy text.",
+            }],
         }
-
-    lower_text = latest_text.lower()
 
     if "shipping" in lower_text or "ship" in lower_text:
         return {
             "reply": "Standard shipping is 3-5 business days, and express shipping is 1-2 business days.",
             "status_message": "Checking policy document...",
+            "decision": "policy_answered",
+            "policy_topic": "shipping",
+            "tools": [{"name": "@policy.retrieve", "status": "success", "detail": "Retrieved Bookly shipping policy text."}],
         }
 
     if "return" in lower_text:
         return {
             "reply": "Books can be returned within 30 days of delivery if they are unused or damaged on arrival.",
             "status_message": "Checking policy document...",
+            "decision": "policy_answered",
+            "policy_topic": "returns",
+            "tools": [{"name": "@policy.retrieve", "status": "success", "detail": "Retrieved Bookly returns policy text."}],
         }
 
     if "refund" in lower_text:
         return {
             "reply": "Refunds go back to the original payment method and usually take 3-7 business days after approval.",
             "status_message": "Checking policy document...",
+            "decision": "policy_answered",
+            "policy_topic": "refunds",
+            "tools": [{"name": "@policy.retrieve", "status": "success", "detail": "Retrieved Bookly refund policy text."}],
         }
 
     return {
@@ -469,6 +796,9 @@ def answer_policy_question(latest_text):
         ),
         "status_message": "Checking policy document...",
         "escalated": True,
+        "decision": "escalated_unclear_policy",
+        "policy_topic": "policy",
+        "tools": [{"name": "@policy.retrieve", "status": "not_found", "detail": "No matching answer was found in Bookly policy text."}],
     }
 
 
@@ -493,6 +823,14 @@ def answer_by_intent(route, messages, user):
             "reply": escalation_message(order_number, "Customer requested human support"),
             "status_message": "Preparing escalation details...",
             "escalated": True,
+            "decision": "escalated_customer_request",
+            "order_number": order_number,
+            "reason": "Customer requested human support",
+            "tools": [{
+                "name": "@escalation.create_mock",
+                "status": "mocked",
+                "detail": "Created a mocked teammate review handoff.",
+            }],
         }
 
     return {
@@ -502,6 +840,7 @@ def answer_by_intent(route, messages, user):
             "or ask to speak with a teammate. What would you like help with?"
         ),
         "status_message": "Reviewing your request...",
+        "decision": "clarification_requested",
     }
 
 
@@ -571,6 +910,7 @@ class BooklyServer(BaseHTTPRequestHandler):
                     "type": "meta",
                     "intent": result["data"].get("intent", ""),
                     "isNewTopic": result["data"].get("isNewTopic", False),
+                    "trace": result["data"].get("trace"),
                 },
             )
             send_stream_event(self, {"type": "done"})
@@ -584,6 +924,7 @@ class BooklyServer(BaseHTTPRequestHandler):
                 "intent": result["data"]["intent"],
                 "isNewTopic": result["data"]["isNewTopic"],
                 "escalated": result["data"]["escalated"],
+                "trace": result["data"]["trace"],
             },
         )
         stream_words(self, result["data"]["reply"])
@@ -627,6 +968,7 @@ def handle_chat(body):
     latest_text = latest_user_message(messages)
     route = route_with_claude(latest_text, active_intent)
     route = fill_route_from_context(route, messages)
+    route["conversation_id"] = str(body.get("conversationId", "conv_demo"))[:80]
 
     if route["is_new_topic"]:
         messages = [{"role": "user", "content": latest_text}]
@@ -634,6 +976,17 @@ def handle_chat(body):
     user = user_from_session_token(session_token)
 
     if route["private_request"] and not user:
+        blocked_answer = {
+            "decision": "blocked_private_tool_access",
+            "order_number": route.get("order_number", ""),
+            "reason": route.get("reason", ""),
+            "tools": [{
+                "name": "@orders.lookup",
+                "status": "blocked",
+                "detail": "Authentication is required before private order data can be accessed.",
+            }],
+        }
+        trace = build_trace(route, blocked_answer, user, messages)
         return {
             "status_code": 401,
             "data": {
@@ -643,10 +996,12 @@ def handle_chat(body):
                 ),
                 "intent": route["intent"],
                 "isNewTopic": route["is_new_topic"],
+                "trace": trace,
             },
         }
 
     answer = answer_by_intent(route, messages, user)
+    trace = build_trace(route, answer, user, messages)
 
     return {
         "status_code": 200,
@@ -656,6 +1011,7 @@ def handle_chat(body):
             "isNewTopic": route["is_new_topic"],
             "statusMessage": answer.get("status_message", "Reviewing your request..."),
             "escalated": bool(answer.get("escalated", False)),
+            "trace": trace,
         },
     }
 
@@ -663,7 +1019,7 @@ def handle_chat(body):
 if __name__ == "__main__":
     load_env_file()
 
-    port = int(os.environ.get("PORT", "3000"))
+    port = int(os.environ.get("PORT", DEFAULT_LOCAL_PORT))
     host = os.environ.get("HOST", "0.0.0.0")
     server = ThreadingHTTPServer((host, port), BooklyServer)
 
