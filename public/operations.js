@@ -30,6 +30,7 @@ const NEGATIVE_SENTIMENT_TRACE = {
   summary: "The customer expressed strong frustration after repeating a damaged-book refund request.",
   resolution: "The agent acknowledged the frustration and created a teammate handoff with the conversation context.",
   tags: ["flagged", "Negative Sentiment"],
+  evaluationStatus: "passed",
   watchtower: { risk: "high" },
   transcript: [
     { role: "user", content: "This is incredibly frustrating. I have explained the damaged book twice and still do not have a refund." },
@@ -37,6 +38,82 @@ const NEGATIVE_SENTIMENT_TRACE = {
     { role: "assistant", content: "I am sorry this has been frustrating. I have created a teammate handoff and included your previous refund context so you will not need to repeat it." }
   ]
 };
+
+const SHIPPING_POLICY_TRACE = {
+  authenticated: false,
+  username: "",
+  intent: "policy",
+  workflow: "Shipping Policy Answer",
+  workflowVersion: "v1.0",
+  decision: "policy_answered",
+  summary: "The customer asked how long Bookly shipping usually takes.",
+  resolution: "The agent answered from the shipping policy without requiring account access.",
+  tags: ["deflected"],
+  evaluationStatus: "passed",
+  watchtower: { risk: "low" },
+  transcript: [
+    { role: "user", content: "How long does shipping usually take?" },
+    { role: "assistant", content: "Standard shipping is 3-5 business days, and express shipping is 1-2 business days." }
+  ]
+};
+
+const ORDER_STATUS_TRACE = {
+  authenticated: true,
+  username: "user1",
+  intent: "order_status",
+  workflow: "Order Status Lookup",
+  workflowVersion: "v1.0",
+  decision: "order_status_found",
+  summary: "The customer requested a delivery update and provided the order number after one clarification.",
+  resolution: "Order BK-10293 was found and its current delivery status was provided.",
+  tags: ["deflected"],
+  evaluationStatus: "passed",
+  watchtower: { risk: "low" },
+  transcript: [
+    { role: "user", content: "Hi, can you tell me where my order is?" },
+    { role: "assistant", content: "Happy to help. What's your order number?" },
+    { role: "user", content: "It's BK-10293." },
+    { role: "assistant", content: "Thanks. Order BK-10293 shipped on the 18th and is out for delivery today." }
+  ]
+};
+
+const RETURN_EXCEPTION_TRACE = {
+  authenticated: true,
+  username: "user1",
+  intent: "refund_return",
+  workflow: "Refund / Return Resolution",
+  workflowVersion: "v1.4",
+  decision: "escalated_outside_return_window",
+  summary: "The customer requested a refund for a damaged book delivered outside the 30-day window.",
+  resolution: "The automatic refund was withheld and a CRM teammate-review handoff was created with the order context.",
+  tags: ["flagged", "Refund Policy Exceptions"],
+  evaluationStatus: "passed",
+  watchtower: { risk: "medium" },
+  transcript: [
+    { role: "user", content: "I want to return order BK-20045 because the cover arrived damaged." },
+    { role: "assistant", content: "Order BK-20045 was delivered 45 days ago, past our 30-day return window. I created a teammate review in the CRM and included your order number and damage reason, so you will not need to repeat them." }
+  ]
+};
+
+const INSIGHTS_VIEWS = {
+  all: {
+    total: "6,340",
+    description: "AI-labeled Bookly support categories across all conversations.",
+    values: [31, 24, 17, 12, 8, 8]
+  },
+  deflected: {
+    total: "4,692",
+    description: "Categories resolved without teammate intervention.",
+    values: [25, 30, 23, 9, 4, 9]
+  },
+  undeflected: {
+    total: "1,648",
+    description: "Categories that required follow-up, escalation, or remained open.",
+    values: [48, 8, 5, 20, 14, 5]
+  }
+};
+
+const INSIGHTS_COLORS = ["#e87955", "#5b67d8", "#72c86a", "#e9a23b", "#8667d7", "#cfd3dc"];
 
 function readable(value) {
   if (!value) {
@@ -91,6 +168,29 @@ function renderInsights(trace) {
   setText("insightsSummary", trace.summary);
 }
 
+function renderInsightsDistribution(viewName) {
+  const view = INSIGHTS_VIEWS[viewName];
+  const donut = document.querySelector("#insightsDonut");
+  let start = 0;
+
+  const colorStops = view.values.map((value, index) => {
+    const end = start + value;
+    const stop = `${INSIGHTS_COLORS[index]} ${start}% ${end}%`;
+    start = end;
+    return stop;
+  });
+
+  donut.style.background = `conic-gradient(${colorStops.join(", ")})`;
+  donut.setAttribute("aria-label", `Illustrative category distribution for ${viewName} conversations`);
+  setText("insightsTotal", view.total);
+  setText("insightsViewLabel", view.description);
+
+  document.querySelectorAll("[data-insight-value]").forEach((element) => {
+    const index = Number(element.dataset.insightValue);
+    element.textContent = `${view.values[index]}%`;
+  });
+}
+
 function renderBuildAop(trace) {
   const status = document.querySelector("#aopStatus");
   const isActive = trace.intent === "refund_return";
@@ -120,8 +220,20 @@ function renderConversations(trace, selectedRowId = "latestConversationRow") {
   });
 
   const failedEvaluation = trace.evaluationStatus === "failed";
-  document.querySelector("#conversationIssueStatus").value = failedEvaluation ? "In review" : "Unassigned";
-  document.querySelector("#conversationQuality").value = failedEvaluation ? "Needs improvement" : "Not reviewed";
+  const passedEvaluation = trace.evaluationStatus === "passed";
+  let issueStatus = "Unassigned";
+  let resolutionQuality = "Not reviewed";
+
+  if (failedEvaluation) {
+    issueStatus = "In review";
+    resolutionQuality = "Needs improvement";
+  } else if (passedEvaluation) {
+    issueStatus = "Resolved";
+    resolutionQuality = "Correct";
+  }
+
+  document.querySelector("#conversationIssueStatus").value = issueStatus;
+  document.querySelector("#conversationQuality").value = resolutionQuality;
 
   const authPill = document.querySelector("#conversationAuth");
   setPill(authPill, trace.authenticated ? "Authenticated" : "Not authenticated", trace.authenticated ? "success" : "warning");
@@ -198,14 +310,17 @@ function selectConsolePanel(panelId) {
   });
 }
 
-function openFailedRefundConversation() {
-  renderConversations(FAILED_REFUND_TEST_TRACE, "failedRefundConversationRow");
+function openSavedConversation(trace, rowId) {
+  renderConversations(trace, rowId);
   selectConsolePanel("conversationsPanel");
 }
 
+function openFailedRefundConversation() {
+  openSavedConversation(FAILED_REFUND_TEST_TRACE, "failedRefundConversationRow");
+}
+
 function openNegativeSentimentConversation() {
-  renderConversations(NEGATIVE_SENTIMENT_TRACE, "negativeSentimentConversationRow");
-  selectConsolePanel("conversationsPanel");
+  openSavedConversation(NEGATIVE_SENTIMENT_TRACE, "negativeSentimentConversationRow");
 }
 
 document.querySelectorAll(".console-tab").forEach((tab) => {
@@ -216,6 +331,15 @@ document.querySelectorAll(".console-tab").forEach((tab) => {
 
 document.querySelector("#failedRefundConversationRow").addEventListener("click", openFailedRefundConversation);
 document.querySelector("#negativeSentimentConversationRow").addEventListener("click", openNegativeSentimentConversation);
+document.querySelector("#shippingConversationRow").addEventListener("click", () => {
+  openSavedConversation(SHIPPING_POLICY_TRACE, "shippingConversationRow");
+});
+document.querySelector("#orderStatusConversationRow").addEventListener("click", () => {
+  openSavedConversation(ORDER_STATUS_TRACE, "orderStatusConversationRow");
+});
+document.querySelector("#returnExceptionConversationRow").addEventListener("click", () => {
+  openSavedConversation(RETURN_EXCEPTION_TRACE, "returnExceptionConversationRow");
+});
 document.querySelector("[data-open-failed-refund]").addEventListener("click", openFailedRefundConversation);
 setText("failedTestRationale", FAILED_REFUND_TEST_TRACE.resolution);
 document.querySelector("#latestConversationRow").addEventListener("click", () => {
@@ -223,6 +347,19 @@ document.querySelector("#latestConversationRow").addEventListener("click", () =>
     renderConversations(latestLiveTrace);
   }
 });
+
+document.querySelectorAll(".insights-filter-button").forEach((button) => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".insights-filter-button").forEach((otherButton) => {
+      const isSelected = otherButton === button;
+      otherButton.classList.toggle("active", isSelected);
+      otherButton.setAttribute("aria-selected", String(isSelected));
+    });
+    renderInsightsDistribution(button.dataset.insightsView);
+  });
+});
+
+renderInsightsDistribution("all");
 
 document.querySelectorAll(".build-subtab").forEach((tab) => {
   tab.addEventListener("click", () => {

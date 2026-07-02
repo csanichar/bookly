@@ -188,22 +188,44 @@
           </section>
         </div>
 
-        <div id="insightsPanel" class="console-panel" role="tabpanel" hidden>
-          <div class="panel-title-row"><div><p class="panel-label">Taxonomy</p><h3>Support issue drilldown</h3></div></div>
-          <div class="insights-layout">
-            <div class="taxonomy-list">
-              <strong>Refund / Return Issues</strong>
-              <span>Damaged item</span><span>Outside return window</span><span>Wrong item received</span>
-              <span>Missing order number</span><span>Refund timing question</span>
-              <strong>Order Status</strong><strong>Shipping Questions</strong>
-              <strong>Payment / Billing Questions</strong><strong>Human Escalations</strong>
+        <div id="insightsPanel" class="console-panel insights-panel" role="tabpanel" hidden>
+          <div class="insights-page-heading">
+            <div><p class="panel-label">Conversation analytics</p><h3>Insights</h3></div>
+            <span class="data-label">Illustrative data</span>
+          </div>
+
+          <div class="insights-filter" role="tablist" aria-label="Conversation outcome filter">
+            <button class="insights-filter-button active" type="button" role="tab" aria-selected="true" data-insights-view="all">All Conversations</button>
+            <button class="insights-filter-button" type="button" role="tab" aria-selected="false" data-insights-view="deflected">Deflected</button>
+            <button class="insights-filter-button" type="button" role="tab" aria-selected="false" data-insights-view="undeflected">Undeflected</button>
+          </div>
+
+          <section class="insights-chart-card" aria-labelledby="userQuestionsTitle">
+            <div class="insights-chart-heading">
+              <div><h4 id="userQuestionsTitle">What are users asking?</h4><p id="insightsViewLabel">AI-labeled Bookly support categories across all conversations.</p></div>
+              <span class="data-label">Last 30 days</span>
             </div>
-            <div class="latest-callout">
-              <span>Latest conversation category</span>
-              <strong id="latestCategory">Waiting for a conversation</strong>
+
+            <div class="insights-visual">
+              <div id="insightsDonut" class="insights-donut" role="img" aria-label="Illustrative category distribution for all conversations">
+                <div><strong id="insightsTotal">6,340</strong><span>conversations</span></div>
+              </div>
+
+              <div class="insights-legend" aria-label="Conversation category legend">
+                <div><i class="insight-color returns" aria-hidden="true"></i><span>Returns &amp; Refunds</span><strong data-insight-value="0">31%</strong></div>
+                <div><i class="insight-color orders" aria-hidden="true"></i><span>Order Status</span><strong data-insight-value="1">24%</strong></div>
+                <div><i class="insight-color shipping" aria-hidden="true"></i><span>Shipping Questions</span><strong data-insight-value="2">17%</strong></div>
+                <div><i class="insight-color damaged" aria-hidden="true"></i><span>Damaged Items</span><strong data-insight-value="3">12%</strong></div>
+                <div><i class="insight-color escalation" aria-hidden="true"></i><span>Human Escalations</span><strong data-insight-value="4">8%</strong></div>
+                <div><i class="insight-color other" aria-hidden="true"></i><span>Other</span><strong data-insight-value="5">8%</strong></div>
+              </div>
+            </div>
+
+            <div class="insights-live-classification">
+              <div><span>Latest model classification</span><strong id="latestCategory">Waiting for a conversation</strong></div>
               <p id="insightsSummary">Complete a support turn to classify it.</p>
             </div>
-          </div>
+          </section>
         </div>
 
         <div id="buildPanel" class="console-panel build-workspace" role="tabpanel" hidden>
@@ -366,9 +388,9 @@
                   <strong>Repeated refund request caused frustration</strong>
                   <small>Flagged by Watchtower - simulated</small>
                 </button>
-                <div class="conversation-row" data-conversation-search="deflected shipping policy answered"><span class="conversation-tag">Deflected</span><strong>Shipping timing question</strong><small>12m ago - simulated</small></div>
-                <div class="conversation-row" data-conversation-search="deflected order status resolved"><span class="conversation-tag">Deflected</span><strong>Tracking update request</strong><small>38m ago - simulated</small></div>
-                <div class="conversation-row" data-conversation-search="flagged refund policy exceptions outside window"><span class="conversation-tag warning">Flagged</span><strong>Return policy exception</strong><small>1h ago - simulated</small></div>
+                <button id="shippingConversationRow" class="conversation-row" type="button" data-conversation-search="deflected shipping policy answered"><span class="conversation-tag">Deflected</span><strong>Shipping timing question</strong><small>12m ago - simulated</small></button>
+                <button id="orderStatusConversationRow" class="conversation-row" type="button" data-conversation-search="deflected order status resolved"><span class="conversation-tag">Deflected</span><strong>Tracking update request</strong><small>38m ago - simulated</small></button>
+                <button id="returnExceptionConversationRow" class="conversation-row" type="button" data-conversation-search="flagged refund policy exceptions outside window crm"><span class="conversation-tag warning">Flagged</span><strong>Return policy exception</strong><small>1h ago - simulated</small></button>
               </div>
             </aside>
 
