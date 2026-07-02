@@ -9,16 +9,32 @@ const FAILED_REFUND_TEST_TRACE = {
   workflow: "Refund / Return Resolution",
   workflowVersion: "v1.4",
   decision: "refund_denied_without_escalation",
-  summary: "The customer requested a human after an outside-window refund denial, but the agent repeated the policy response.",
-  resolution: "Failed evaluation: the agent should have created a teammate handoff and passed along the order number and return reason.",
-  tags: ["refund", "outside_return_window", "escalation_missed", "qa_failed"],
+  summary: "An outside-window refund request was redirected to support email instead of being escalated to the CRM.",
+  resolution: "Failed evaluation: the agent should have called @escalation.create_mock and sent the order number and return reason to the CRM, but it only directed the customer to support@bookly.com.",
+  tags: ["flagged", "Refund Policy Exceptions"],
   evaluationStatus: "failed",
   watchtower: { risk: "high" },
   transcript: [
     { role: "user", content: "I need a refund for order BK-20045. The book arrived with a crushed spine." },
-    { role: "assistant", content: "Order BK-20045 was delivered 45 days ago, so it is outside Bookly's 30-day return window and I cannot issue an automatic refund." },
-    { role: "user", content: "Please escalate this to a person who can review it." },
-    { role: "assistant", content: "Order BK-20045 was delivered 45 days ago and is outside the 30-day return window." }
+    { role: "assistant", content: "Order BK-20045 was delivered 45 days ago and is outside Bookly's 30-day return window. I cannot process the refund automatically. Please email support@bookly.com for additional help." }
+  ]
+};
+
+const NEGATIVE_SENTIMENT_TRACE = {
+  authenticated: true,
+  username: "user2",
+  intent: "human_escalation",
+  workflow: "Human Escalation",
+  workflowVersion: "v1.0",
+  decision: "escalated_customer_request",
+  summary: "The customer expressed strong frustration after repeating a damaged-book refund request.",
+  resolution: "The agent acknowledged the frustration and created a teammate handoff with the conversation context.",
+  tags: ["flagged", "Negative Sentiment"],
+  watchtower: { risk: "high" },
+  transcript: [
+    { role: "user", content: "This is incredibly frustrating. I have explained the damaged book twice and still do not have a refund." },
+    { role: "user", content: "I need to speak with a person who can actually resolve this." },
+    { role: "assistant", content: "I am sorry this has been frustrating. I have created a teammate handoff and included your previous refund context so you will not need to repeat it." }
   ]
 };
 
@@ -37,6 +53,10 @@ function setText(id, text) {
 function setPill(element, text, tone) {
   element.textContent = text;
   element.className = `status-pill ${tone}`;
+}
+
+function primaryConversationTag(trace) {
+  return (trace.tags && trace.tags[0]) || "Uncategorized";
 }
 
 function renderOperationsConsole(trace) {
@@ -87,7 +107,10 @@ function renderConversations(trace, selectedRowId = "latestConversationRow") {
   setText("conversationDecision", readable(trace.decision));
   setText("conversationRisk", readable(trace.watchtower.risk));
   if (selectedRowId === "latestConversationRow") {
-    setText("conversationLatestTag", readable(trace.intent));
+    const latestTag = document.querySelector("#conversationLatestTag");
+    const tag = primaryConversationTag(trace);
+    latestTag.textContent = readable(tag);
+    latestTag.className = `conversation-tag ${tag === "flagged" ? "warning" : ""}`;
     setText("conversationLatestTitle", trace.summary);
     setText("conversationLatestTime", "Updated just now");
   }
@@ -107,7 +130,13 @@ function renderConversations(trace, selectedRowId = "latestConversationRow") {
   tags.innerHTML = "";
   (trace.tags || []).forEach((tag) => {
     const element = document.createElement("span");
+    const normalizedTag = tag.toLowerCase();
     element.textContent = readable(tag);
+    element.className = normalizedTag === "deflected"
+      ? "deflected"
+      : normalizedTag === "flagged"
+        ? "flagged"
+        : "criteria";
     tags.appendChild(element);
   });
 
@@ -174,6 +203,11 @@ function openFailedRefundConversation() {
   selectConsolePanel("conversationsPanel");
 }
 
+function openNegativeSentimentConversation() {
+  renderConversations(NEGATIVE_SENTIMENT_TRACE, "negativeSentimentConversationRow");
+  selectConsolePanel("conversationsPanel");
+}
+
 document.querySelectorAll(".console-tab").forEach((tab) => {
   tab.addEventListener("click", () => {
     selectConsolePanel(tab.dataset.panel);
@@ -181,6 +215,7 @@ document.querySelectorAll(".console-tab").forEach((tab) => {
 });
 
 document.querySelector("#failedRefundConversationRow").addEventListener("click", openFailedRefundConversation);
+document.querySelector("#negativeSentimentConversationRow").addEventListener("click", openNegativeSentimentConversation);
 document.querySelector("[data-open-failed-refund]").addEventListener("click", openFailedRefundConversation);
 setText("failedTestRationale", FAILED_REFUND_TEST_TRACE.resolution);
 document.querySelector("#latestConversationRow").addEventListener("click", () => {

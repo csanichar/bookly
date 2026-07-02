@@ -523,13 +523,6 @@ def build_trace(route, answer, user, messages):
     reason = answer.get("reason") or route.get("reason", "")
     escalated = bool(answer.get("escalated", False))
     resolved = decision in ["approved_refund", "order_status_found", "policy_answered"]
-    tags = [route.get("category") or "General inquiry"]
-    tags.extend(route.get("flags", []))
-
-    if resolved:
-        tags.append("resolved")
-    if escalated:
-        tags.append("escalated")
 
     audit_log = [{"step": "AOP selected", "detail": f"{workflow} v1.0"}]
 
@@ -586,7 +579,7 @@ def build_trace(route, answer, user, messages):
         "conversationId": route.get("conversation_id", "conv_demo"),
         "summary": summaries.get(intent, summaries["general"]),
         "resolution": resolutions.get(decision, "Support response provided."),
-        "tags": tags,
+        "tags": [],
         "intent": intent,
         "workflow": workflow,
         "workflowVersion": "v1.0",
@@ -640,7 +633,15 @@ def build_trace(route, answer, user, messages):
         ),
     }
     trace["watchtower"] = build_watchtower(trace)
-    trace["tags"] = list(dict.fromkeys(trace["tags"] + trace["watchtower"]["flags"]))
+
+    if trace["watchtower"]["matched"]:
+        trace["tags"] = ["flagged"] + trace["watchtower"]["jobs"]
+    elif resolved:
+        trace["tags"] = ["deflected"]
+    else:
+        trace["tags"] = [trace["watchtower"]["category"]]
+
+    trace["tags"] = list(dict.fromkeys(tag for tag in trace["tags"] if tag))
     return trace
 
 

@@ -1122,6 +1122,198 @@ button.aop-row:hover {
   stroke: #505bc7;
 }
 
+.csat-section {
+  margin-top: 34px;
+}
+
+.csat-section-heading,
+.csat-chart-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.csat-section-heading h3 {
+  margin: 4px 0 0;
+  color: #17151c;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 30px;
+  font-weight: 500;
+}
+
+.csat-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.csat-chart-card {
+  margin-top: 12px;
+  padding: 20px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 7px;
+}
+
+.csat-chart-heading h4 {
+  margin: 0;
+  color: #17151c;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.csat-chart-heading p {
+  margin: 5px 0 0;
+  color: #667085;
+  font-size: 11px;
+}
+
+.weekly-average {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #667085;
+  font-size: 11px;
+}
+
+.weekly-average i {
+  width: 12px;
+  height: 12px;
+  background: #7168e8;
+  border: 3px solid #e7e7fb;
+  border-radius: 50%;
+  box-sizing: content-box;
+}
+
+.csat-chart-layout {
+  display: grid;
+  grid-template-columns: minmax(250px, 0.72fr) minmax(0, 1.28fr);
+  gap: 24px;
+  align-items: stretch;
+  margin-top: 18px;
+}
+
+.csat-distribution {
+  padding: 14px;
+  background: #f3f4f7;
+  border-radius: 6px;
+}
+
+.csat-score-row {
+  display: grid;
+  grid-template-columns: 12px 18px minmax(0, 1fr) 38px;
+  gap: 8px;
+  align-items: center;
+  min-height: 34px;
+  color: #344054;
+  font-size: 11px;
+}
+
+.csat-score-row strong {
+  font-weight: 500;
+}
+
+.csat-score-row small {
+  color: #667085;
+  text-align: right;
+}
+
+.score-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 1px;
+}
+
+.score-5 {
+  background: #49b83f;
+}
+
+.score-4 {
+  background: #5b67d8;
+}
+
+.score-3 {
+  background: #18a9b8;
+}
+
+.score-2 {
+  background: #e99a0c;
+}
+
+.score-1 {
+  background: #d64545;
+}
+
+.csat-score-bar {
+  display: flex;
+  height: 9px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.csat-score-bar i {
+  display: block;
+  height: 100%;
+}
+
+.csat-score-bar .score-5 {
+  width: 48%;
+}
+
+.csat-score-bar .score-4 {
+  width: 17.4%;
+}
+
+.csat-score-bar .score-3 {
+  width: 5.1%;
+}
+
+.csat-score-bar .score-2 {
+  width: 8%;
+}
+
+.csat-score-bar .score-1 {
+  width: 21.5%;
+}
+
+.csat-trend {
+  min-width: 0;
+}
+
+.csat-trend svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 230px;
+}
+
+.csat-grid line {
+  stroke: #e5e7eb;
+  stroke-width: 1;
+}
+
+.csat-axis-labels {
+  fill: #98a2b3;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10px;
+}
+
+.csat-area {
+  fill: url(#csatArea);
+}
+
+.csat-line {
+  fill: none;
+  stroke: #554bd8;
+  stroke-linecap: round;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
 .overview-latest {
   margin-top: 22px;
   padding-top: 18px;
@@ -1141,6 +1333,21 @@ button.aop-row:hover {
   border-radius: 4px;
   font-size: 11px;
   font-weight: 700;
+}
+
+.tag-row span.deflected {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.tag-row span.flagged {
+  color: #b42318;
+  background: #fee4e2;
+}
+
+.tag-row span.criteria {
+  color: #4338ca;
+  background: #e8e7fb;
 }
 
 .latest-grid {
@@ -1358,11 +1565,6 @@ button.conversation-row {
 .conversation-tag.warning {
   color: #9a3412;
   background: #ffedd5;
-}
-
-.conversation-tag.failed {
-  color: #b42318;
-  background: #fee4e2;
 }
 
 .conversation-transcript-pane {
@@ -2081,6 +2283,8 @@ button.conversation-row {
   }
 
   .overview-metrics,
+  .csat-metrics,
+  .csat-chart-layout,
   .latest-grid,
   .watchtower-card-grid,
   .watchtower-card-metrics,
@@ -2091,7 +2295,9 @@ button.conversation-row {
   }
 
   .overview-heading,
-  .overview-chart-heading {
+  .overview-chart-heading,
+  .csat-section-heading,
+  .csat-chart-heading {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -2111,6 +2317,14 @@ button.conversation-row {
 
   .chart-legend {
     justify-content: flex-start;
+  }
+
+  .csat-trend {
+    overflow-x: auto;
+  }
+
+  .csat-trend svg {
+    min-width: 560px;
   }
 
   .aop-table {
